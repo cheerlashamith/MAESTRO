@@ -1,23 +1,57 @@
 from __future__ import annotations
 import os
-from pathlib import Path
-from fastapi import FastAPI, HTTPException, Query, Body
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
-from backend.core.config import project_root, get_config, save_config
-from backend.core.schemas import GenerateRequest, JobStatus
-from backend.core.job_store import get_job, list_jobs, subscribe, unsubscribe
-from backend.services.pipeline import submit_job
+import uuid
 import mimetypes
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from fastapi import FastAPI, HTTPException, Query, Body, File, UploadFile, Request
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+from backend.core.config import project_root, get_config, save_config, outputs_root
+from backend.core.schemas import (
+    GenerateRequest,
+    JobStatus,
+    YouTubeOptimizeRequest,
+    YouTubePublishRequest,
+    YouTubeScheduleRequest
+)
+from backend.core.job_store import get_job, list_jobs, subscribe, unsubscribe
+from backend.services.pipeline import submit_job, regenerate_job
+from backend.services.analytics_agent import start_analytics_agent
+from backend.services.youtube_scheduler import (
+    start_scheduler_daemon,
+    schedule_upload,
+    list_scheduled,
+    cancel_scheduled,
+    get_scheduled
+)
+from backend.services.youtube_auth import (
+    get_auth_url,
+    handle_oauth_callback,
+    get_channel_profile,
+    disconnect_channel,
+    is_authenticated
+)
+from backend.services.youtube_optimizer import optimize_metadata, extract_video_thumbnail
+from backend.services.youtube_upload import get_all_analytics, upload_video_to_youtube
 
 mimetypes.add_type('application/javascript', '.js')
 mimetypes.add_type('text/css', '.css')
 mimetypes.add_type('image/svg+xml', '.svg')
 
-
-app = FastAPI(title="AutoCourse Studio API", version="0.2.0")
+app = FastAPI(title="AutoCourse Studio API", version="0.3.0")
 ROOT = project_root()
 FRONTEND = ROOT / "frontend_v2" / "dist"
+
+
+@app.on_event("startup")
+def startup_event():
+    start_scheduler_daemon()
+    start_analytics_agent()
+
 
 # If the dist folder doesn't exist yet, fallback to original frontend to prevent startup errors
 if not FRONTEND.exists():
@@ -29,9 +63,9 @@ if assets_dir.exists():
     app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
 
-# (catch_all moved to bottom)
-
-
+# ---------------------------------------------------------------------------
+# Core & System Endpoints
+# ---------------------------------------------------------------------------
 
 @app.get("/api/health")
 def health():
@@ -58,6 +92,10 @@ def modes():
         "visual_styles": ["manim_course", "comfyui_story", "pexels", "hybrid"],
     }
 
+
+# ---------------------------------------------------------------------------
+# Job Management Endpoints
+# ---------------------------------------------------------------------------
 
 @app.post("/api/jobs")
 def create(req: GenerateRequest):
@@ -93,6 +131,39 @@ def cancel_job(job_id: str):
     return {"message": "Job cancelled"}
 
 
+class FeedbackRequest(BaseModel):
+    feedback: str
+
+
+@app.post("/api/jobs/{job_id}/regenerate")
+def api_regenerate_job(job_id: str, req: FeedbackRequest):
+    try:
+        return regenerate_job(job_id, req.feedback)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.post("/api/jobs/{job_id}/upload")
+def api_upload_job(job_id: str, payload: Optional[YouTubePublishRequest] = None):
+    try:
+        if payload:
+            res = upload_video_to_youtube(
+                job_id=job_id,
+                title=payload.title,
+                description=payload.description,
+                tags=payload.tags,
+                privacy_status=payload.privacy_status,
+                schedule_time=payload.schedule_time,
+                schedule_mode=payload.schedule_mode,
+                thumbnail_path=payload.thumbnail_path
+            )
+        else:
+            res = upload_video_to_youtube(job_id=job_id)
+        return res
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
 @app.get("/api/jobs/{job_id}/stream")
 async def stream_job(job_id: str):
     rec = get_job(job_id)
@@ -113,41 +184,164 @@ async def stream_job(job_id: str):
             
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
+
+# ---------------------------------------------------------------------------
+# YouTube OAuth, Publishing & Scheduling Endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/youtube/status")
+def api_youtube_status():
+    """Get channel connection status and profile details."""
+    return get_channel_profile()
+
+
+@app.get("/api/youtube/auth/url")
+def api_youtube_auth_url(request: Request, redirect_uri: Optional[str] = None):
+    """Generate Google OAuth 2.0 authorization URL."""
+    try:
+        if not redirect_uri:
+            # Default to standard loopback callback route
+            base_url = str(request.base_url).rstrip("/")
+            redirect_uri = f"{base_url}/api/youtube/oauth2callback"
+        
+        auth_url = get_auth_url(redirect_uri)
+        return {"auth_url": auth_url, "redirect_uri": redirect_uri}
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+
+
+@app.get("/api/youtube/oauth2callback")
+def api_youtube_oauth2callback(request: Request, code: str = Query(...), state: Optional[str] = None):
+    """OAuth callback endpoint handling Google redirect."""
+    try:
+        base_url = str(request.base_url).rstrip("/")
+        redirect_uri = f"{base_url}/api/youtube/oauth2callback"
+        handle_oauth_callback(code, redirect_uri)
+        return RedirectResponse(url="/user/publisher?connected=true")
+    except Exception as e:
+        print(f"[OAuth Callback Error] {e}")
+        return RedirectResponse(url=f"/user/publisher?error={str(e)}")
+
+
+@app.post("/api/youtube/auth/disconnect")
+def api_youtube_disconnect():
+    """Disconnect YouTube channel by removing cached credentials."""
+    return disconnect_channel()
+
+
+@app.post("/api/youtube/optimize")
+def api_youtube_optimize(req: YouTubeOptimizeRequest):
+    """AI metadata & SEO generation (titles, description, tags, category, thumbnail)."""
+    try:
+        return optimize_metadata(
+            topic=req.topic,
+            script=req.script,
+            keywords=req.keywords,
+            visual_style=req.visual_style,
+            video_path=req.video_path
+        )
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.post("/api/youtube/publish")
+def api_youtube_publish(req: YouTubePublishRequest):
+    """Immediate publish or schedule upload for a video."""
+    try:
+        video_path = req.video_path
+        if not video_path and req.job_id:
+            job_rec = get_job(req.job_id)
+            if job_rec:
+                video_path = job_rec.files.get("final_video") or (
+                    job_rec.files.get("videos", [None])[0] if isinstance(job_rec.files.get("videos"), list) else None
+                )
+
+        if not video_path:
+            raise HTTPException(400, "video_path or valid job_id is required.")
+
+        is_immediate = (req.privacy_status != "scheduled") and (req.schedule_time is None)
+
+        record = schedule_upload(
+            video_path=video_path,
+            title=req.title,
+            description=req.description,
+            tags=req.tags,
+            category_id=req.category_id,
+            privacy_status=req.privacy_status,
+            schedule_time=req.schedule_time,
+            schedule_mode=req.schedule_mode,
+            thumbnail_path=req.thumbnail_path,
+            job_id=req.job_id,
+            immediate=is_immediate
+        )
+        return record
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.get("/api/youtube/queue")
+def api_youtube_queue():
+    """List all scheduled and published items in queue."""
+    return {"queue": list_scheduled()}
+
+
+@app.delete("/api/youtube/queue/{schedule_id}")
+def api_youtube_cancel_queue(schedule_id: str):
+    """Cancel a scheduled upload."""
+    success = cancel_scheduled(schedule_id)
+    if not success:
+        raise HTTPException(400, "Could not cancel scheduled item (it may already be uploading or completed).")
+    return {"success": True, "message": "Scheduled upload cancelled."}
+
+
+@app.post("/api/youtube/upload-thumbnail")
+async def api_youtube_upload_thumbnail(file: UploadFile = File(...)):
+    """Upload a custom thumbnail image for a video."""
+    try:
+        thumb_dir = outputs_root() / "thumbnails"
+        thumb_dir.mkdir(parents=True, exist_ok=True)
+        ext = Path(file.filename or "thumb.jpg").suffix or ".jpg"
+        save_name = f"{uuid.uuid4().hex[:10]}{ext}"
+        target_path = thumb_dir / save_name
+
+        content = await file.read()
+        target_path.write_bytes(content)
+
+        return {"success": True, "thumbnail_path": str(target_path.resolve()), "filename": save_name}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.get("/api/youtube/analytics")
+@app.get("/api/admin/youtube-analytics")
+def api_youtube_analytics():
+    """Get channel metrics and statistics for all uploaded videos."""
+    try:
+        return get_all_analytics()
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+# ---------------------------------------------------------------------------
+# Admin & Configuration Endpoints
+# ---------------------------------------------------------------------------
+
 @app.get("/api/admin/plugins")
 def get_plugins():
     from backend.services.brain_manager import BrainManager
     return BrainManager.get_plugin_health()
 
+
 @app.get("/api/config")
 def get_configuration():
     return get_config()
+
 
 @app.post("/api/config")
 def update_configuration(new_cfg: dict = Body(...)):
     save_config(new_cfg)
     return {"status": "success", "message": "Configuration updated"}
 
-@app.get("/api/admin/plugins")
-def get_plugins():
-    from backend.engine_registry import PLUGINS
-    res = []
-    for p_id, p_class in PLUGINS.items():
-        try:
-            inst = p_class()
-            res.append({
-                "plugin": p_id,
-                "model": inst.model_name if hasattr(inst, "model_name") else getattr(inst, "MODEL_NAME", "Unknown"),
-                "healthy": True,
-                "task_types": [t.value for t in inst.supports] if hasattr(inst, "supports") else []
-            })
-        except Exception as e:
-            res.append({
-                "plugin": p_id,
-                "model": "Unknown",
-                "healthy": False,
-                "task_types": []
-            })
-    return res
 
 @app.get("/api/admin/metrics")
 def get_metrics():
@@ -169,10 +363,12 @@ def get_metrics():
         "queued_jobs": len(queued_jobs)
     }
 
+
 @app.get("/api/admin/cache")
 def get_cache():
     from backend.services.cache_manager import CacheManager
     return CacheManager.get_cache_stats()
+
 
 @app.get("/api/download")
 def download(path: str = Query(..., description="Absolute path to a generated file")):
@@ -184,7 +380,6 @@ def download(path: str = Query(..., description="Absolute path to a generated fi
 
     outputs_dir = (ROOT / "outputs").resolve()
     
-    # Windows-safe comparison: normalize both paths to lowercase for comparison
     file_str = str(file_path).replace("\\", "/").lower()
     outputs_str = str(outputs_dir).replace("\\", "/").lower()
     
@@ -201,12 +396,16 @@ def download(path: str = Query(..., description="Absolute path to a generated fi
         headers={"Content-Disposition": f'attachment; filename="{file_path.name}"'}
     )
 
+
+# ---------------------------------------------------------------------------
+# Frontend Catch-All Route
+# ---------------------------------------------------------------------------
+
 @app.get('/{full_path:path}')
 def catch_all(full_path: str):
     if full_path.startswith('api/'):
         raise HTTPException(status_code=404, detail='API route not found')
         
-    # Check if the requested file exists in the FRONTEND directory
     file_path = FRONTEND / full_path
     if file_path.exists() and file_path.is_file():
         return FileResponse(file_path)
@@ -215,4 +414,3 @@ def catch_all(full_path: str):
     if index_file.exists():
         return FileResponse(index_file)
     return JSONResponse(status_code=404, content={'error': 'Frontend build not found. Run npm run build in frontend_v2'})
-

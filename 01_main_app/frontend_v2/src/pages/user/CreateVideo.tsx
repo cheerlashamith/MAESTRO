@@ -13,6 +13,13 @@ export default function CreateVideo() {
   const [voice, setVoice] = useState('en-US-AndrewMultilingualNeural');
   const [aspect, setAspect] = useState('16:9');
 
+  // YouTube Auto-Publishing Options
+  const [autoPublish, setAutoPublish] = useState<boolean>(false);
+  const [publishPrivacy, setPublishPrivacy] = useState<string>('private');
+  const [publishScheduleDate, setPublishScheduleDate] = useState<string>('');
+  const [publishScheduleTime, setPublishScheduleTime] = useState<string>('12:00');
+  const [publishScheduleMode, setPublishScheduleMode] = useState<string>('local');
+
   // Auto-update selections when mode changes
   useEffect(() => {
     if (mode === 'manual') {
@@ -37,6 +44,12 @@ export default function CreateVideo() {
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    let scheduleTimeIso: string | undefined = undefined;
+    if (autoPublish && publishPrivacy === 'scheduled' && publishScheduleDate) {
+      const combined = `${publishScheduleDate}T${publishScheduleTime || '12:00'}:00`;
+      scheduleTimeIso = new Date(combined).toISOString();
+    }
     
     try {
       const response = await fetch('/api/jobs', {
@@ -48,7 +61,11 @@ export default function CreateVideo() {
           youtube_url: mode === 'youtube' ? topic : undefined,
           visual_style: visualStyle,
           aspect: aspect,
-          voice: voice
+          voice: voice,
+          auto_publish: autoPublish,
+          publish_privacy: publishPrivacy,
+          publish_schedule_time: scheduleTimeIso,
+          publish_schedule_mode: publishScheduleMode
         })
       });
       
@@ -148,6 +165,69 @@ export default function CreateVideo() {
               <option value="1:1">1:1 (Square)</option>
             </select>
           </div>
+        </div>
+
+        {/* YouTube Auto-Publishing Card */}
+        <div style={{ marginTop: '1.25rem', padding: '1.25rem', background: 'rgba(255, 0, 0, 0.05)', border: '1px solid rgba(255, 60, 60, 0.2)', borderRadius: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: autoPublish ? '1rem' : 0 }}>
+            <div>
+              <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ff6b6b' }}>
+                <MonitorPlay size={16} /> Automated YouTube Publishing
+              </div>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Automatically optimize with AI and publish or schedule to YouTube when video render completes.
+              </span>
+            </div>
+            <input 
+              type="checkbox" 
+              checked={autoPublish} 
+              onChange={e => setAutoPublish(e.target.checked)} 
+              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+            />
+          </div>
+
+          {autoPublish && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <div className="form-group">
+                <label style={{ fontSize: '0.825rem' }}>Visibility</label>
+                <select className="input-field" value={publishPrivacy} onChange={e => setPublishPrivacy(e.target.value)}>
+                  <option value="private">Private (Recommended)</option>
+                  <option value="unlisted">Unlisted</option>
+                  <option value="public">Public</option>
+                  <option value="scheduled">Schedule for Later</option>
+                </select>
+              </div>
+
+              {publishPrivacy === 'scheduled' ? (
+                <div className="form-group">
+                  <label style={{ fontSize: '0.825rem' }}>Schedule Date & Time</label>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input 
+                      type="date" 
+                      className="input-field" 
+                      value={publishScheduleDate} 
+                      onChange={e => setPublishScheduleDate(e.target.value)} 
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                    <input 
+                      type="time" 
+                      className="input-field" 
+                      value={publishScheduleTime} 
+                      onChange={e => setPublishScheduleTime(e.target.value)} 
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label style={{ fontSize: '0.825rem' }}>Schedule Mode</label>
+                  <select className="input-field" value={publishScheduleMode} onChange={e => setPublishScheduleMode(e.target.value)}>
+                    <option value="local">AutoCourse Local Queue</option>
+                    <option value="native">Native YouTube Scheduled</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="form-footer">

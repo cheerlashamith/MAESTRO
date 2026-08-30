@@ -10,10 +10,12 @@
     "outputs_dir": "outputs"
   },
   "providers": {
-    "default_llm": "ollama",
+    "default_llm": "openai",
     "planner_model": "qwen3:14b",
     "coding_model": "qwen2.5:7b",
     "utility_model": "gemma3:4b",
+    "openai_api_key": "YOUR_OPENAI_API_KEY_HERE",
+    "openai_model": "gpt-4o-mini",
     "gemini_api_key": "",
     "groq_api_key": ""
   },

@@ -50,15 +50,18 @@ class BrainManager:
         
         # Optional routing logic (length based) could be injected here
         cfg = get_config().get("providers", {})
+        default_llm = cfg.get("default_llm", "ollama").lower()
         preferred = []
-        if task_type in [TaskType.PLANNING, TaskType.STORY, TaskType.SYLLABUS]:
+
+        if default_llm in ["openai", "gpt-4o-mini"]:
+            preferred = [p for p in capable_plugins if p.model_name() == "gpt-4o-mini"]
+        elif task_type in [TaskType.PLANNING, TaskType.STORY, TaskType.SYLLABUS]:
             target = cfg.get("planner_model", "qwen2.5:7b")
             preferred = [p for p in capable_plugins if p.model_name() == target]
         elif task_type == TaskType.CODE:
             target = cfg.get("coding_model", "qwen2.5:7b")
             if len(prompt) > 2500:
                 target = cfg.get("planner_model", "qwen2.5:7b") # Large code -> planner
-            # if target model is not in capable_plugins, find it in all plugins
             preferred = [p for p in cls._plugins if p.model_name() == target]
             capable_plugins = list(set(capable_plugins + preferred))
         elif task_type in [TaskType.KEYWORDS, TaskType.CLASSIFY, TaskType.ENRICHMENT]:

@@ -650,10 +650,41 @@ def _generate_youtube_plan(video_title: str, transcript: str, notes: Optional[st
         raise RuntimeError("Failed to extract JSON from Ollama for YouTube rewrite.")
     return _clean_plan(plan, video_title, "YouTube Extraction", [])
 
+def regenerate_plan(req: GenerateRequest) -> Dict[str, Any]:
+    """Regenerate a plan using the previous plan and user feedback."""
+    if not req.previous_plan:
+        raise ValueError("previous_plan is required for regeneration.")
+    if not req.feedback:
+        raise ValueError("feedback is required for regeneration.")
+
+    prompt = f"""You are an expert educational video planner. You previously generated a JSON video plan, but the user requested changes.
+Please update the plan based on the user's feedback.
+
+User Feedback:
+{req.feedback}
+
+Previous Plan JSON:
+{json.dumps(req.previous_plan, indent=2)}
+
+Rules:
+1. Return ONLY the modified JSON object.
+2. Keep the same structure (subject, scenes, moneyprinter_script, keywords, etc.).
+3. Update the moneyprinter_script or scenes as requested.
+4. Do not include markdown code fences, explanations, or <think> tags.
+"""
+    raw = BrainManager.ask(prompt, TaskType.PLANNING)
+    plan = _extract_json(raw)
+    if plan is None:
+        raise RuntimeError("Failed to extract JSON from Ollama for regeneration.")
+    
+    # We do a basic clean up without overriding the user's specific modifications to visual_data if they were made.
+    topic = plan.get("subject", req.topic or "Regenerated Video")
+    return _clean_plan(plan, topic, "Regeneration", [])
 
 # ---------------------------------------------------------------------------
 # PUBLIC API
 # ---------------------------------------------------------------------------
+
 
 def build_plan(req: GenerateRequest) -> Dict[str, Any]:
     """Build a single plan for the requested topic."""

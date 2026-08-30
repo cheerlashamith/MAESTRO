@@ -13,7 +13,8 @@ import {
   Database,
   BarChart3,
   Wrench,
-  LogOut
+  LogOut,
+  Share2
 } from 'lucide-react';
 import './Sidebar.css';
 
@@ -49,6 +50,10 @@ export default function Sidebar() {
               <NavLink to="/user/videos" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
                 <Film size={18} />
                 <span>My Videos</span>
+              </NavLink>
+              <NavLink to="/user/publisher" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
+                <Share2 size={18} />
+                <span>YouTube Publisher</span>
               </NavLink>
               <NavLink to="/user/history" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
                 <History size={18} />
@@ -88,7 +93,11 @@ export default function Sidebar() {
               </NavLink>
               <NavLink to="/admin/analytics" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
                 <BarChart3 size={18} />
-                <span>Analytics</span>
+                <span>System Analytics</span>
+              </NavLink>
+              <NavLink to="/admin/analytics-dashboard" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
+                <Activity size={18} />
+                <span>Agent Analytics</span>
               </NavLink>
               <NavLink to="/admin/config" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
                 <Wrench size={18} />

@@ -5,6 +5,7 @@ import Dashboard from './pages/user/Dashboard';
 import CreateVideo from './pages/user/CreateVideo';
 import GenerationProgress from './pages/user/GenerationProgress';
 import MyVideos from './pages/user/MyVideos';
+import YouTubePublisher from './pages/user/YouTubePublisher';
 import History from './pages/user/History';
 import Settings from './pages/user/Settings';
 import SystemDashboard from './pages/admin/SystemDashboard';
@@ -13,6 +14,7 @@ import PluginManager from './pages/admin/PluginManager';
 import JobManager from './pages/admin/JobManager';
 import CacheManager from './pages/admin/CacheManager';
 import Analytics from './pages/admin/Analytics';
+import AnalyticsDashboard from './pages/admin/AnalyticsDashboard';
 import Configuration from './pages/admin/Configuration';
 
 function App() {
@@ -29,6 +31,7 @@ function App() {
           <Route path="create" element={<CreateVideo />} />
           <Route path="progress" element={<GenerationProgress />} />
           <Route path="videos" element={<MyVideos />} />
+          <Route path="publisher" element={<YouTubePublisher />} />
           <Route path="history" element={<History />} />
           <Route path="settings" element={<Settings />} />
         </Route>
@@ -42,6 +45,7 @@ function App() {
           <Route path="jobs" element={<JobManager />} />
           <Route path="cache" element={<CacheManager />} />
           <Route path="analytics" element={<Analytics />} />
+          <Route path="analytics-dashboard" element={<AnalyticsDashboard />} />
           <Route path="config" element={<Configuration />} />
         </Route>
       </Routes>

@@ -62,6 +62,11 @@ yarn-error.log*
 01_main_app/frontend_v2/dist/
 01_main_app/frontend/dist/
 01_main_app/data/
+01_main_app/config.json
+01_main_app/client_secret.json
+01_main_app/token.json
+client_secret.json
+token.json
 
 # OS Files
 .DS_Store

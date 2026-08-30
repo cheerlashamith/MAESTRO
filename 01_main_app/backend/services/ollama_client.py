@@ -9,14 +9,14 @@ def get_ollama_url() -> str:
 def call_ollama_api(prompt: str, model: str, timeout: int = None) -> str:
     """Low-level HTTP client to call Ollama's /api/generate endpoint."""
     if timeout is None:
-        timeout = get_config().get("brain_manager", {}).get("timeout_seconds", 900)
+        timeout = get_config().get("brain_manager", {}).get("timeout_seconds", 30)
     url = get_ollama_url() + "/api/generate"
 
     def ensure_ollama_running():
         try:
-            requests.get(get_ollama_url(), timeout=2)
+            requests.get(get_ollama_url(), timeout=1.5)
             return
-        except requests.exceptions.ConnectionError:
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             pass
         import subprocess, os, time
         # Write logs to file to prevent block

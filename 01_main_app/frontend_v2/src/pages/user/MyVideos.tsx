@@ -58,12 +58,18 @@ export default function MyVideos() {
       });
   }, []);
 
-  const getVideoPath = (job: JobSummary): string => {
-    return job.files?.final_video || job.files?.videos?.[0] || '';
-  };
+  const handleDownload = (video: JobSummary) => {
+    const rawTopic = video.request?.topic || video.request?.syllabus_subject || 'course_video';
+    const cleanTopic = rawTopic.replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_') || 'course_video';
+    const filename = `${cleanTopic}.mp4`;
+    const downloadUrl = `/api/jobs/${video.job_id}/download/${encodeURIComponent(filename)}`;
 
-  const handleDownload = (path: string) => {
-    window.open(`/api/download?path=${encodeURIComponent(path)}`, '_blank');
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleRegenerate = async (jobId: string) => {
@@ -331,7 +337,7 @@ export default function MyVideos() {
                     <div className="action-row-split">
                       <button 
                         className="action-btn-secondary"
-                        onClick={() => handleDownload(getVideoPath(video))}
+                        onClick={() => handleDownload(video)}
                         title="Download rendered MP4 video"
                       >
                         <Download size={14} />
@@ -416,7 +422,7 @@ export default function MyVideos() {
               <div className="theater-footer-actions">
                 <button 
                   className="btn btn-secondary"
-                  onClick={() => handleDownload(getVideoPath(previewVideoJob))}
+                  onClick={() => handleDownload(previewVideoJob)}
                 >
                   <Download size={15} />
                   Download MP4

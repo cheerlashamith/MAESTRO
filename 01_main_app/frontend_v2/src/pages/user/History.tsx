@@ -48,8 +48,18 @@ export default function History() {
       });
   }, []);
 
-  const handleDownload = (path: string) => {
-    window.open(`/api/download?path=${encodeURIComponent(path)}`, '_blank');
+  const handleDownload = (job: JobSummary) => {
+    const rawTopic = job.request?.topic || job.request?.syllabus_subject || 'course_video';
+    const cleanTopic = rawTopic.replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_') || 'course_video';
+    const filename = `${cleanTopic}.mp4`;
+    const downloadUrl = `/api/jobs/${job.job_id}/download/${encodeURIComponent(filename)}`;
+
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -101,7 +111,7 @@ export default function History() {
                 <td className="text-muted">{formatDate(job.created_at)}</td>
                 <td onClick={e => e.stopPropagation()}>
                   {job.status === 'completed' && job.files?.final_video && (
-                    <button className="btn btn-secondary btn-sm" onClick={() => handleDownload(job.files!.final_video)}>
+                    <button className="btn btn-secondary btn-sm" onClick={() => handleDownload(job)}>
                       <Download size={14} /> Download
                     </button>
                   )}

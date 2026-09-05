@@ -71,11 +71,20 @@ export default function GenerationProgress() {
   }, [jobId]);
 
   const handleDownload = () => {
-    // Try final_video first, then fall back to videos[0]
-    const path = job?.files?.final_video || job?.files?.videos?.[0];
+    if (!job) return;
+    const path = job.files?.final_video || job.files?.videos?.[0];
     if (path) {
-      const encoded = encodeURIComponent(path);
-      window.open(`/api/download?path=${encoded}`, '_blank');
+      const rawTopic = job.request?.topic || job.request?.syllabus_subject || 'course_video';
+      const cleanTopic = rawTopic.replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_') || 'course_video';
+      const filename = `${cleanTopic}.mp4`;
+      const downloadUrl = `/api/jobs/${job.job_id}/download/${encodeURIComponent(filename)}`;
+
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } else {
       alert("No final video file path found in job output. The video may still be processing.");
     }

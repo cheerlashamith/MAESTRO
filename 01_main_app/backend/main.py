@@ -512,7 +512,7 @@ def get_cache():
 
 
 @app.get("/api/download")
-def download(path: str = Query(..., description="Absolute path to a generated file")):
+def download(path: str = Query(..., description="Absolute path to a generated file"), filename: Optional[str] = Query(None)):
     """Download a generated file by absolute path. Only files inside the outputs directory are allowed."""
     try:
         file_path = Path(path).resolve()
@@ -527,11 +527,65 @@ def download(path: str = Query(..., description="Absolute path to a generated fi
     if not file_path.exists() or not file_path.is_file():
         raise HTTPException(404, f"File not found: {file_path}")
 
+    save_name = filename or file_path.name
+    if file_path.suffix.lower() == ".mp4" and not save_name.lower().endswith(".mp4"):
+        save_name = f"{save_name}.mp4"
+
     return FileResponse(
         file_path,
-        filename=file_path.name,
-        media_type="video/mp4" if file_path.suffix == ".mp4" else None,
-        headers={"Content-Disposition": f'attachment; filename="{file_path.name}"'}
+        filename=save_name,
+        media_type="video/mp4" if file_path.suffix.lower() == ".mp4" else "application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{save_name}"',
+            "Content-Type": "video/mp4" if file_path.suffix.lower() == ".mp4" else "application/octet-stream",
+        }
+    )
+
+
+@app.get("/api/jobs/{job_id}/download")
+@app.get("/api/jobs/{job_id}/download/{filename}")
+def download_job_video(job_id: str, filename: Optional[str] = None):
+    """Download the completed MP4 video for a job with a clean, named filename."""
+    import json
+    job_dir = (outputs_root() / job_id).resolve()
+    video_path = job_dir / "final_video.mp4"
+
+    if not video_path.exists():
+        job_json = job_dir / "job.json"
+        if job_json.exists():
+            try:
+                data = json.loads(job_json.read_text(encoding="utf-8"))
+                v = data.get("files", {}).get("final_video") or (data.get("files", {}).get("videos") or [None])[0]
+                if v and Path(v).exists():
+                    video_path = Path(v)
+            except Exception:
+                pass
+
+    if not video_path.exists() or not video_path.is_file():
+        raise HTTPException(404, f"Final video not found for job {job_id}")
+
+    if not filename:
+        topic = "video"
+        job_json = job_dir / "job.json"
+        if job_json.exists():
+            try:
+                data = json.loads(job_json.read_text(encoding="utf-8"))
+                topic = data.get("request", {}).get("topic") or "video"
+            except Exception:
+                pass
+        clean_name = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in topic).strip("_")
+        filename = f"{clean_name}.mp4"
+    elif not filename.lower().endswith(".mp4"):
+        filename = f"{filename}.mp4"
+
+    return FileResponse(
+        video_path,
+        media_type="video/mp4",
+        filename=filename,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Type": "video/mp4",
+        }
     )
 
 

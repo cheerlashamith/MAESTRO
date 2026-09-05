@@ -1,0 +1,501 @@
+================================================================================
+                                 M A E S T R O
+================================================================================
+ Multi-Agent Autonomous Engine for Scalable Transmedia Production & Orchestration
+                     OFFICIAL SYSTEM ARCHITECTURE & USER MANUAL
+                                Version 2.0 (Enterprise)
+================================================================================
+
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+1.  SYSTEM OVERVIEW & THE CONDUCTOR PHILOSOPHY
+2.  MULTI-AGENT INTER-COMMUNICATION PROTOCOL (HOW AGENTS TALK TO EACH OTHER)
+3.  DETAILED AGENT DIRECTORY & RESPONSIBILITY MATRIX
+4.  GUIDE: CREATING CUSTOM 16:9 LANDSCAPE COURSES & TUTORIALS
+5.  GUIDE: CREATING CUSTOM 9:16 VERTICAL SHORTS & REELS
+6.  VISUAL ENGINES & RENDERING PIPELINES (MANIM, PEXELS, COMFYUI)
+7.  HUMAN-IN-THE-LOOP (HITL) REVIEW GATE & SUB-10S SCENE REGENERATION
+8.  YOUTUBE AUTO-OPTIMIZATION, SCHEDULING & PUBLISHING ENGINE
+9.  COMPLETE COMMAND REFERENCE: HOW MANY & WHAT COMMANDS TO RUN
+10. DUAL-PORTAL ARCHITECTURE & IAM SECURITY MATRIX
+11. CONFIGURATION REFERENCE & PROVIDER FALLBACK RULES
+12. TROUBLESHOOTING, DIAGNOSTICS & SYSTEM RECOVERY
+================================================================================
+
+
+================================================================================
+1. SYSTEM OVERVIEW & THE CONDUCTOR PHILOSOPHY
+================================================================================
+
+MAESTRO stands for:
+  M - Multi-Agent
+  A - Autonomous
+  E - Engine for
+  S - Scalable
+  T - Transmedia
+  P - Production &
+  O - Orchestration
+
+Traditional video generators treat video creation as a monolithic script that
+attempts to do everything in one single LLM prompt. This approach is brittle,
+hallucinates, cannot synchronize audio with visual motion, and fails if one step
+breaks.
+
+MAESTRO reimagines video production through an orchestral metaphor:
+One Conductor (The Orchestration Pipeline) coordinates a team of specialized
+agents, where each agent is an expert in one single discipline (curriculum
+planning, scriptwriting, mathematical diagramming, voice acting, audio-video
+multiplexing, or YouTube SEO).
+
+The high-level orchestration hierarchy is:
+
+                        [ M A E S T R O ]
+                     (The Conductor Pipeline)
+                                |
+       +------------------------+------------------------+
+       |                        |                        |
+[ Planner Agent ]       [ Research Agent ]       [ Script Agent ]
+       |                        |                        |
+[ Scene / Visual Agent ][ Voice / TTS Agent ]    [ Rendering Agent ]
+       |                        |                        |
+[ Direct Synthesizer ]  [ SEO / Metadata Agent ] [ Publisher Agent ]
+
+
+================================================================================
+2. MULTI-AGENT INTER-COMMUNICATION PROTOCOL (HOW AGENTS TALK TO EACH OTHER)
+================================================================================
+
+One of the most frequent technical questions is:
+"How do the agents actually communicate with each other?"
+
+MAESTRO does NOT rely on bloated, slow frameworks like LangChain or AutoGen.
+Instead, MAESTRO implements a deterministic, ultra-low-latency, type-safe
+communication architecture built on three core pillars:
+
+  A. The Shared Blackboard (Pydantic Schema Contract)
+  B. The Reactive Job Store (Event-Driven State Machine)
+  C. The Server-Sent Events (SSE) Progress Bus
+
+--------------------------------------------------------------------------------
+A. THE SHARED BLACKBOARD (SCHEMA CONTRACT)
+--------------------------------------------------------------------------------
+Agents do not send unstructured, free-form chat messages to each other. Free-form
+chat is unpredictable and causes parsing crashes. Instead, agents read and write
+to a strictly typed Pydantic object called `JobRecord`.
+
+Every agent operates as a specialized pure transformation function:
+  Input: `JobRecord (State N)`  --->  Agent Logic  --->  Output: `JobRecord (State N+1)`
+
+Example Data Contract Handoff:
+
+1. CLIENT SUBMISSION:
+   User submits `GenerateRequest` (topic, visual_style, aspect, voice).
+   Conductor creates a new UUID `job_id` and registers the initial state.
+
+2. PLANNER AGENT:
+   - Reads: `job.request.topic`, `job.request.aspect`, `syllabus_subject`
+   - Executes: Curriculum breakdown into pedagogical scenes (Intro, Core, Example, Summary).
+   - Writes: `job.files["plan"]` (structured JSON with scene definitions & diagram specs).
+
+3. SCRIPT AGENT:
+   - Reads: `job.files["plan"]`
+   - Executes: Calculates target word budget based on aspect ratio (e.g. 150 words for 9:16 Shorts,
+     350 words for 16:9 courses) and writes natural conversational voiceover narration.
+   - Writes: `job.files["script"]` and `job.files["script_preview"]`.
+
+4. HUMAN-IN-THE-LOOP (HITL) GATE:
+   - If `require_approval == True`, the Conductor freezes the pipeline.
+   - State transitions to `awaiting_approval`.
+   - Instructor reviews or edits the script/scenes in the web UI.
+
+5. VOICE / TTS AGENT:
+   - Reads: `job.files["script"]`
+   - Executes: Microsoft Edge-TTS neural speech synthesis (e.g. `en-US-AndrewMultilingualNeural`).
+   - Writes: `job.output_dir / "voiceover.mp3"` and measures exact duration in milliseconds.
+
+6. SCENE & RENDERING AGENT:
+   - Reads: `job.files["plan"]` + audio duration from Voice Agent.
+   - Executes: Pillow draws 1080p high-contrast vector slides with code blocks and diagrams.
+     FFmpeg converts slides into timed video clips stretched to match voiceover pace.
+   - Writes: `slide_clip_00.mp4`, `slide_clip_01.mp4`, etc.
+
+7. MULTIPLEXING & EDITING AGENT:
+   - Reads: Video clips + voiceover audio + background music (BGM).
+   - Executes: Ultrafast FFmpeg concatenation, audio ducking, and master MP4 multiplexing.
+   - Writes: `job.files["final_video"] = ".../final_video.mp4"`.
+
+8. SEO & PUBLISHER AGENT:
+   - Reads: `final_video.mp4` + topic + transcript.
+   - Executes: Generates optimized YouTube titles, description, tags, and extracts a 1080p
+     thumbnail frame via OpenCV.
+   - Writes: Schedules or uploads video directly to connected YouTube channel.
+
+--------------------------------------------------------------------------------
+B. THE REACTIVE JOB STORE & THREAD SYNCHRONIZATION
+--------------------------------------------------------------------------------
+All agent executions take place in background worker threads managed by
+`01_main_app/backend/services/pipeline.py`.
+
+- Thread Safety: State modifications are protected by Python `threading.Lock()`.
+- Persistence: Every state change is automatically mirrored to disk at
+  `01_main_app/outputs/<job_id>/job.json`.
+- Crash Recovery: If the server restarts while a job is running, `_load_persisted_jobs()`
+  safely repairs orphaned tasks, ensuring zero data loss.
+
+--------------------------------------------------------------------------------
+C. REAL-TIME EVENT BUS (SSE STREAM)
+--------------------------------------------------------------------------------
+How does the browser know what the agents are doing in real time?
+- Endpoint: `GET /api/jobs/{job_id}/stream`
+- The Conductor pushes Server-Sent Events (SSE) whenever any agent updates its task:
+    event: update
+    data: {"progress_percentage": 65, "current_task": "Voice Agent synthesizing audio...", ...}
+- The frontend UI subscribes to this stream and updates the progress bar and logs instantly.
+
+
+================================================================================
+3. DETAILED AGENT DIRECTORY & RESPONSIBILITY MATRIX
+================================================================================
+
+1. PLANNER AGENT:
+   - File: `01_main_app/backend/services/planner.py`
+   - Responsibility: Analyzes syllabus, maps input to algorithmic concepts (arrays, trees,
+     graphs, dynamic programming), plans scene flow and diagram geometry.
+   - Models Used: Local `qwen2.5:7b` via Ollama or `gpt-4o-mini` via OpenAI.
+
+2. SCRIPT AGENT:
+   - File: `01_main_app/backend/services/planner.py` (Script generator subroutine)
+   - Responsibility: Educational tone, storytelling narrative, word count constraints,
+     conversational pacing, keyword density.
+
+3. SCENE / VISUAL AGENT:
+   - File: `01_main_app/backend/services/direct_synthesizer.py`
+   - Responsibility: Generates high-res 1920x1080 (or 1080x1920) slide layouts. Draws
+     mathematical trees, flowcharts, step-by-step memory layouts, and syntax-highlighted code.
+
+4. VOICE / AUDIO AGENT:
+   - File: `01_main_app/backend/services/direct_synthesizer.py`
+   - Responsibility: High-fidelity speech synthesis using neural multi-lingual voices
+     (Andrew, Jenny, Christopher, Sonia, Guy). Handles pitch, rate, and audio normalization.
+
+5. EDITING / MULTIPLEXING AGENT:
+   - File: `01_main_app/backend/services/direct_synthesizer.py`
+   - Responsibility: FFmpeg clip stitching, audio crossfading, background music ducking (5%),
+     and master H.264/AAC MP4 container encoding.
+
+6. SEO & OPTIMIZER AGENT:
+   - File: `01_main_app/backend/services/youtube_optimizer.py`
+   - Responsibility: Generates 5 click-worthy YouTube titles, a structured description with
+     timestamps, viral tags, category ID assignment, and OpenCV thumbnail frame extraction.
+
+7. PUBLISHER & SCHEDULER AGENT:
+   - File: `01_main_app/backend/services/youtube_scheduler.py` & `youtube_upload.py`
+   - Responsibility: Google OAuth 2.0 handshake, background daemon polling, scheduled release
+     execution, and automated YouTube Data API v3 uploads.
+
+
+================================================================================
+4. GUIDE: CREATING CUSTOM 16:9 LANDSCAPE COURSES & TUTORIALS
+================================================================================
+
+16:9 Landscape is the standard format for YouTube, Udemy, Coursera, and classroom lectures.
+
+HOW TO CREATE A CUSTOM COURSE:
+1. Open the Creator Studio at: http://127.0.0.1:8765/user/create
+2. Select Generation Mode:
+   - For an academic topic: Choose "Manual Course (Syllabus Mode)".
+   - For any freeform concept: Choose "Autonomous Course Mode".
+3. Enter your Topic:
+   Example: "Distributed Consensus and Raft Protocol" or "Binary Search Tree Traversal in Python".
+4. Set Visual Style:
+   - "Manim Course": High-tech educational diagrams, code blocks, visual memory slides.
+   - "Pexels Footage": Cinematic real-world B-roll stock footage.
+5. Set Aspect Ratio:
+   Select "16:9 Landscape (YouTube / Desktop)".
+6. Choose Voice:
+   Select "en-US-AndrewMultilingualNeural" (authoritative lecture voice) or "en-US-JennyNeural".
+7. Human-in-the-Loop Review (Recommended: Checked):
+   Checking "Require Approval" allows you to preview the script and diagrams before rendering.
+8. Click "Generate Video Plan".
+   - The agents will draft the 4-scene curriculum in 2 seconds.
+   - Review the script, edit any sentences if desired, and click "Approve & Render".
+   - Your full 1080p MP4 course will be completed in 10-15 seconds!
+
+
+================================================================================
+5. GUIDE: CREATING CUSTOM 9:16 VERTICAL SHORTS & REELS
+================================================================================
+
+9:16 Vertical is the high-growth viral format for YouTube Shorts, Instagram Reels, and TikTok.
+
+HOW TO CREATE A VIRAL SHORT:
+1. Open http://127.0.0.1:8765/user/create
+2. Enter your Topic or Prompt:
+   Example: "3 Mind-Blowing Python Tricks You Didn't Know" or "How QuickSort Works in 45 Seconds".
+3. Set Aspect Ratio:
+   Select "9:16 Vertical (Shorts / Reels / TikTok)".
+4. Pacing & Word Count:
+   - The Script Agent automatically sets a concise word budget (80-140 words).
+   - Pacing is fast and punchy (~160 words/min).
+5. Visual Style:
+   - "Pexels Footage": Automatically pulls vertical HD clips matching the keywords.
+   - "Manim Course": Centered vertical card with high-contrast text and diagrams.
+6. Auto-Publish Option:
+   - Check "Auto-Publish to YouTube Studio".
+   - Set Privacy to "Private", "Unlisted", or "Public".
+7. Click "Generate Video Plan".
+   - In 10-15 seconds, your Short is rendered, tagged, and ready to upload!
+
+
+================================================================================
+6. VISUAL ENGINES & RENDERING PIPELINES
+================================================================================
+
+MAESTRO incorporates three distinct visual rendering engines:
+
+--------------------------------------------------------------------------------
+ENGINE 1: DIRECT NEURAL SYNTHESIZER (Built-in, 100% Local, Zero Dependencies)
+--------------------------------------------------------------------------------
+- Technology: Python Pillow (PIL) + Edge-TTS + FFmpeg.
+- How it Works: Dynamically calculates typography bounding boxes, draws dark-mode gradient
+  cards, parses algorithmic data structures (BSTs, linked lists, arrays, hash tables),
+  and uses FFmpeg with `-preset ultrafast` to generate video clips.
+- Strengths: Guaranteed to work out of the box on any Windows/Linux/Mac machine. Never fails.
+  Renders a 4-scene video in just 10-15 seconds.
+
+--------------------------------------------------------------------------------
+ENGINE 2: PEXELS B-ROLL STOCK ENGINE
+--------------------------------------------------------------------------------
+- Technology: Pexels REST API + FFmpeg video scaling and cropping.
+- How it Works: The SEO/Keywords Agent extracts 8-10 contextual keywords from the script.
+  The engine queries Pexels, downloads high-resolution video clips matching the aspect ratio,
+  trims them to each scene's duration, and concatenates them with audio.
+- Strengths: Delivers authentic, cinematic real-world footage for business, technology,
+  lifestyle, and science topics.
+
+--------------------------------------------------------------------------------
+ENGINE 3: COMFYUI LOCAL DIFFUSION ENGINE (For GPU Workstations)
+--------------------------------------------------------------------------------
+- Technology: Local ComfyUI server running on port 8188 with Stable Diffusion / Flux.
+- How it Works: The Scene Agent generates detailed diffusion prompts for each scene.
+  MAESTRO sends API payloads to ComfyUI, monitors generation progress, and compiles the
+  rendered image sequence into smooth video clips.
+- Strengths: 100% custom, original AI artistic imagery for creative storytelling.
+
+
+================================================================================
+7. HUMAN-IN-THE-LOOP (HITL) REVIEW GATE & SUB-10S SCENE REGENERATION
+================================================================================
+
+In mission-critical enterprise workflows, you do not want an AI to render a 10-minute
+video without human oversight.
+
+THE HITL REVIEW GATE:
+1. When a job is submitted with `require_approval: true`, the Conductor executes
+   the Planning, Research, and Script Agents, then pauses at `awaiting_approval`.
+2. The user sees the full script, scene titles, visual diagrams, and keywords.
+3. The user has three choices:
+   - APPROVE: Renders the video immediately.
+   - EDIT: Directly edit text in the browser, then click "Approve with Edits".
+   - REJECT: Cancel the task.
+
+SUB-10S SCENE REGENERATION:
+If a completed video needs adjustments:
+1. Go to "My Videos" (http://127.0.0.1:8765/user/videos).
+2. Click "Regenerate / Fix" on any video card.
+3. Type natural language feedback (e.g. "Make slide 2 explanation simpler, remove summary scene").
+4. The Planner Agent updates only the requested scenes.
+5. Edge-TTS re-synthesizes the updated audio segment.
+6. FFmpeg re-stitches the sequence in 5-10 seconds!
+
+
+================================================================================
+8. YOUTUBE AUTO-OPTIMIZATION, SCHEDULING & PUBLISHING ENGINE
+================================================================================
+
+MAESTRO includes a direct, integrated YouTube publishing pipeline:
+
+1. ONE-CLICK OAUTH 2.0:
+   - Connect your YouTube channel at: http://127.0.0.1:8765/user/publisher
+   - View channel analytics, subscriber counts, and upload quotas in real time.
+
+2. AI METADATA OPTIMIZER:
+   - Click "AI Optimize Metadata".
+   - The SEO Agent analyzes your video and generates:
+     * 5 high-CTR Titles tailored for the YouTube algorithm.
+     * Full Description with chapters, timestamps, and hashtags.
+     * High-ranking Tags (comma-separated).
+     * Category ID (e.g., 27 for Education, 28 for Science & Tech).
+
+3. HIGH-RES THUMBNAIL EXTRACTION:
+   - Automatically uses OpenCV to capture a 1080p frame at 25% video duration.
+   - You can also upload your own custom thumbnail JPEG/PNG.
+
+4. DUAL SCHEDULING MODES:
+   - Local Scheduler Daemon: MAESTRO's background daemon holds the video and uploads it
+     at your chosen time (e.g. Friday at 6:00 PM).
+   - YouTube Native Scheduled: Uploads the video immediately as "private" with a scheduled
+     publish timestamp on YouTube's servers.
+
+
+================================================================================
+9. COMPLETE COMMAND REFERENCE: HOW MANY & WHAT COMMANDS TO RUN
+================================================================================
+
+MAESTRO is designed to be operated either with a single click or through powerful
+terminal commands. Here is the complete operational command manual:
+
+--------------------------------------------------------------------------------
+COMMAND 1: THE ALL-IN-ONE WINDOWS LAUNCHER (RECOMMENDED)
+--------------------------------------------------------------------------------
+Command:
+  start_autocourse_suite.bat
+
+Location:
+  Workspace root directory.
+
+What it does:
+  Presents an interactive menu:
+    [1] STANDARD MODE (Backend + Built Frontend on Port 8765) - Only 1 window!
+    [2] FULL AI SUITE (Opens 3 windows: App + MoneyPrinterTurbo + ComfyUI)
+    [3] FRONTEND DEV MODE (FastAPI Port 8765 + Vite Hot-Reloading Port 5173)
+    [4] EXIT
+
+--------------------------------------------------------------------------------
+COMMAND 2: STANDALONE PRODUCTION BACKEND SERVER
+--------------------------------------------------------------------------------
+Command:
+  cd 01_main_app
+  python -m uvicorn backend.main:app --host 127.0.0.1 --port 8765
+
+What it does:
+  Starts the MAESTRO FastAPI server on http://127.0.0.1:8765.
+  Automatically serves both the REST API and the compiled React frontend.
+
+--------------------------------------------------------------------------------
+COMMAND 3: FRONTEND DEV SERVER (FOR LIVE UI EDITING)
+--------------------------------------------------------------------------------
+Command:
+  cd 01_main_app/frontend_v2
+  npm run dev
+
+What it does:
+  Starts the Vite hot-reloading development server on http://localhost:5173.
+  Any changes made to React components (.tsx) or styles (.css) update instantly in your browser.
+
+--------------------------------------------------------------------------------
+COMMAND 4: COMPILE FRONTEND PRODUCTION BUNDLE
+--------------------------------------------------------------------------------
+Command:
+  cd 01_main_app/frontend_v2
+  npm run build
+
+What it does:
+  Runs TypeScript type checking (`tsc -b`) and Vite production bundler.
+  Outputs optimized HTML, CSS, and JS into `01_main_app/frontend_v2/dist/`.
+
+--------------------------------------------------------------------------------
+COMMAND 5: TEST LOCAL OLLAMA MODELS
+--------------------------------------------------------------------------------
+Command:
+  ollama list
+  ollama run qwen2.5:7b
+
+What it does:
+  Verifies that your local Ollama instance is running and that your chosen LLM is ready
+  to handle MAESTRO planning offline with 0 cloud API costs.
+
+--------------------------------------------------------------------------------
+COMMAND 6: CHECK FFMPEG CAPABILITIES
+--------------------------------------------------------------------------------
+Command:
+  ffmpeg -version
+
+What it does:
+  Confirms that FFmpeg is accessible for video encoding, audio multiplexing, and thumbnail extraction.
+
+
+================================================================================
+10. DUAL-PORTAL ARCHITECTURE & IAM SECURITY MATRIX
+================================================================================
+
+MAESTRO provides two distinct user portals accessible from the Login page:
+
+1. CREATOR STUDIO (User: `shamith` | Role: `creator`):
+   - Focus: Pure video production and publishing.
+   - Accessible Pages:
+     * Create Video (Course, Story, Shorts)
+     * Live Progress (HITL Review & Execution)
+     * My Videos (Rendered MP4 Gallery & Theater Player)
+     * YouTube Publisher (OAuth & Scheduling)
+     * Task History & User Preferences
+
+2. SUPER ADMIN CONSOLE (User: `shamith_admin` | Role: `admin`):
+   - Focus: Engine architecture, provider keys, and security controls.
+   - Accessible Pages:
+     * Dynamic IAM Matrix (Create custom roles, edit permissions, toggle read/write/delete scopes)
+     * Workflow Architect (Visual drag-and-drop node graph pipeline editor)
+     * AI Provider Settings (Ollama, OpenAI, Gemini, Groq keys and models)
+     * System Dashboard (Live CPU, RAM, active workers, task management)
+
+SWITCHING PORTALS:
+You can switch portals at any time by clicking "Switch Portal" in the top navbar or by
+logging in with either user credential.
+
+
+================================================================================
+11. CONFIGURATION REFERENCE & PROVIDER FALLBACK RULES
+================================================================================
+
+The master configuration file lives at:
+  `01_main_app/config.json` (template in `01_main_app/config.example.json`)
+
+Key Configuration Blocks:
+
+1. `project_name`: "MAESTRO"
+2. `project_full_name`: "Multi-Agent Autonomous Engine for Scalable Transmedia Production & Orchestration"
+3. `host`: "127.0.0.1", `port`: 8765
+4. `providers`:
+   - `default_llm`: "openai" (or "ollama" for 100% free local offline generation)
+   - `planner_model`: "qwen2.5:7b"
+   - `openai_model`: "gpt-4o-mini"
+   - `ollama_url`: "http://127.0.0.1:11434"
+5. `rendering`:
+   - `default_course_renderer`: "manim"
+   - `course_aspect`: "16:9"
+   - `story_aspect`: "9:16"
+   - `course_voice`: "en-US-AndrewMultilingualNeural"
+   - `bgm_volume`: 0.05 (Background music ducking level)
+
+INTELLIGENT FALLBACK RULES:
+If OpenAI API key is empty or cloud services are unreachable, `BrainManager` automatically
+falls back to your local Ollama instance (`qwen2.5:7b`), ensuring that video generation
+NEVER fails due to internet or credit issues.
+
+
+================================================================================
+12. TROUBLESHOOTING, DIAGNOSTICS & SYSTEM RECOVERY
+================================================================================
+
+Q1: What if a video download fails or saves as an unknown file?
+A1: Fixed in v2.0! MAESTRO now uses direct anchor downloads with URLs ending in `.mp4`
+    (e.g., `/api/jobs/{job_id}/download/QuickSort_in_Python.mp4`). Click "Export MP4" on
+    any card to download the exact video file directly.
+
+Q2: What if the port 8765 is already in use?
+A2: Open PowerShell and run:
+      Get-Process -Name "*python*" | Stop-Process
+    Then launch `start_autocourse_suite.bat` again.
+
+Q3: Can I run MAESTRO completely offline without internet?
+A3: Yes! Set `default_llm: "ollama"` in `config.json` and use the built-in "Manim Course"
+    visual style. It renders mathematical diagrams, code, and slides completely offline.
+
+Q4: Where are the rendered MP4 files stored on disk?
+A4: All output files are organized by job ID at:
+      `01_main_app/outputs/<job_id>/final_video.mp4`
+
+================================================================================
+                              END OF MANUAL
+                  MAESTRO - CONDUCT YOUR CONTENT CREATION
+================================================================================

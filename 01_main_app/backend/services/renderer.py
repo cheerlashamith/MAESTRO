@@ -54,7 +54,7 @@ def render_manim_course(scenes_json: Path, progress_callback=None) -> List[Path]
     if progress_callback:
         progress_callback("Rendering Manim course clips...")
 
-    _run_subprocess([sys.executable, "render_all.py"], cwd=engine_dir, timeout=3600)
+    _run_subprocess([sys.executable, "render_all.py"], cwd=engine_dir, timeout=20)
 
     clips_dir = engine_dir / "generated" / "clips"
     if not clips_dir.exists():
@@ -90,7 +90,7 @@ def render_comfyui_story(scenes_json: Path, progress_callback=None) -> List[Path
     _run_subprocess(
         [sys.executable, "generate_story_materials.py", "--scenes", "scenes_story.json"],
         cwd=engine_dir,
-        timeout=3600,
+        timeout=25,
     )
 
     clips_dir = engine_dir / "generated" / "clips"

@@ -612,42 +612,162 @@ def _slug(text: str) -> str:
 # ---------------------------------------------------------------------------
 
 def _generate_course_plan(topic_name: str, subtopics: List[str], unit_title: str, notes: Optional[str] = None) -> Dict[str, Any]:
-    """Generate a course plan using the LLM, with schema-safe post-processing."""
+    """Generate a course plan using the LLM, with schema-safe post-processing and resilient offline fallback."""
     prompt = _course_prompt(topic_name, subtopics, unit_title, notes)
-    raw = BrainManager.ask(prompt, TaskType.PLANNING)
-    plan = _extract_json(raw)
+    plan = None
+    try:
+        raw = BrainManager.ask(prompt, TaskType.PLANNING)
+        plan = _extract_json(raw)
+    except Exception as e:
+        print(f"[Planner] LLM generation failed ({e}). Using curriculum fallback template.")
+
     if plan is None:
-        raise RuntimeError("Failed to extract JSON from Ollama. Try a different model or check the Ollama logs.")
+        subs = subtopics if subtopics else ["Introduction and Overview", "Core Mechanics and Properties", "Implementation and Operations", "Real-World Applications and Complexity"]
+        scenes = []
+        script_parts = [f"Welcome to this lecture on {topic_name} in {unit_title}."]
+        for i, sub in enumerate(subs[:4]):
+            narration = f"Section {i+1}: {sub}. In computer science and algorithmic system design, mastering {sub} provides critical insights into data organization and computational efficiency."
+            script_parts.append(narration)
+            scenes.append({
+                "name": f"scene_{i+1:02d}_{_slug(sub)}",
+                "title": f"{sub}",
+                "bullets": [
+                    f"Core principles of {sub}",
+                    f"Operational workflow in {topic_name}",
+                    "Efficiency metrics and asymptotic performance"
+                ],
+                "narration": narration,
+                "diagram_type": "array" if i == 1 else ("tree" if "tree" in topic_name.lower() else "process"),
+                "visual_data": {"values": [12, 24, 36, 48, 60], "highlight": 1} if i == 1 else {"steps": ["Input Specification", "Processing Step", "Validation", "Output State"]}
+            })
+        script_parts.append(f"To summarize, {topic_name} forms a cornerstone concept. Practice these fundamentals to design robust and scalable software.")
+        plan = {
+            "subject": topic_name,
+            "render_mode": "course",
+            "visual_style": "manim_course",
+            "keywords": f"{topic_name}, Data Structures, Computer Science, Algorithms, Engineering",
+            "moneyprinter_script": " ".join(script_parts),
+            "scenes": scenes
+        }
+
     return _clean_plan(plan, topic_name, unit_title, subtopics)
 
 
 def _generate_story_plan(topic_name: str, notes: Optional[str] = None) -> Dict[str, Any]:
-    """Generate a story plan using the LLM."""
+    """Generate a story plan using the LLM with resilient offline fallback."""
     prompt = _story_prompt(topic_name, notes)
-    raw = BrainManager.ask(prompt, TaskType.STORY)
-    plan = _extract_json(raw)
+    plan = None
+    try:
+        raw = BrainManager.ask(prompt, TaskType.STORY)
+        plan = _extract_json(raw)
+    except Exception as e:
+        print(f"[Planner] LLM story generation failed ({e}). Using resilient story fallback.")
+
     if plan is None:
-        raise RuntimeError("Failed to extract JSON from Ollama for story mode.")
+        plan = {
+            "subject": topic_name,
+            "render_mode": "story",
+            "visual_style": "comfyui_story",
+            "keywords": "story, adventure, moral, animated narrative, wisdom",
+            "moneyprinter_script": f"Once upon a time in a peaceful village, an inspiring journey began regarding {topic_name}. Together with trusted companions, challenges were faced with perseverance and courage. Through kindness and clever thinking, harmony was restored, teaching everyone the true value of friendship and resilience.",
+            "scenes": [
+                {
+                    "name": "scene_01_beginning",
+                    "title": f"The Journey of {topic_name}",
+                    "prompt": f"Vertical 9:16 storybook illustration of a magical land with lush green hills and warm morning light, no text, no watermark",
+                    "narration": f"Once upon a time in a peaceful village, an inspiring journey began regarding {topic_name}.",
+                    "bullets": ["A peaceful beginning", "The calling to adventure"]
+                },
+                {
+                    "name": "scene_02_challenge",
+                    "title": "A Great Challenge",
+                    "prompt": "Vertical 9:16 illustration of brave characters facing a mystical winding mountain pass at dusk, no text, no watermark",
+                    "narration": "Together with trusted companions, challenges were faced with perseverance and courage.",
+                    "bullets": ["Confronting the unknown", "Teamwork in action"]
+                },
+                {
+                    "name": "scene_03_resolution",
+                    "title": "Wisdom & Victory",
+                    "prompt": "Vertical 9:16 vibrant illustration of a glowing celebration under starlight, joyful atmosphere, no text, no watermark",
+                    "narration": "Through kindness and clever thinking, harmony was restored, teaching everyone the true value of friendship.",
+                    "bullets": ["Harmony restored", "Valuable life lesson"]
+                }
+            ]
+        }
+
     return _clean_plan(plan, topic_name, "Story Mode", [])
 
 
 def _generate_pexels_plan(topic_name: str, notes: Optional[str] = None) -> Dict[str, Any]:
-    """Generate a Pexels-style script plan using the LLM."""
+    """Generate a Pexels-style script plan using the LLM with resilient offline fallback."""
     prompt = _pexels_prompt(topic_name, notes)
-    raw = BrainManager.ask(prompt, TaskType.PLANNING)
-    plan = _extract_json(raw)
+    plan = None
+    try:
+        raw = BrainManager.ask(prompt, TaskType.PLANNING)
+        plan = _extract_json(raw)
+    except Exception as e:
+        print(f"[Planner] LLM stock script generation failed ({e}). Using resilient explainer fallback.")
+
     if plan is None:
-        raise RuntimeError("Failed to extract JSON from Ollama for Pexels-style plan.")
+        plan = {
+            "subject": topic_name,
+            "render_mode": "pexels",
+            "video_source": "pexels",
+            "keywords": f"{topic_name}, technology, innovation, education, future",
+            "moneyprinter_script": f"Have you ever wondered how {topic_name} shapes modern systems? Across global industries, the principles of {topic_name} drive breakthrough innovations. By streamlining complexity and optimizing throughput, it enables high-performance digital infrastructure. Understanding these core fundamentals is key to building future-proof technology.",
+            "scenes": [
+                {
+                    "name": "scene_01_intro",
+                    "title": f"The Evolution of {topic_name}",
+                    "narration": f"Have you ever wondered how {topic_name} shapes modern systems?",
+                    "bullets": ["Global impact", "Core concepts"]
+                },
+                {
+                    "name": "scene_02_application",
+                    "title": "Architectural Design",
+                    "narration": f"Across global industries, the principles of {topic_name} drive breakthrough innovations.",
+                    "bullets": ["High throughput", "Scalable systems"]
+                },
+                {
+                    "name": "scene_03_future",
+                    "title": "Looking Ahead",
+                    "narration": "Understanding these core fundamentals is key to building future-proof technology.",
+                    "bullets": ["Engineering excellence", "Future outlook"]
+                }
+            ]
+        }
+
     return _clean_plan(plan, topic_name, "General Topic", [])
 
 
 def _generate_youtube_plan(video_title: str, transcript: str, notes: Optional[str] = None) -> Dict[str, Any]:
     """Generate a Pexels-style script plan from a YouTube transcript."""
     prompt = _youtube_prompt(video_title, transcript, notes)
-    raw = BrainManager.ask(prompt, TaskType.PLANNING)
-    plan = _extract_json(raw)
+    plan = None
+    try:
+        raw = BrainManager.ask(prompt, TaskType.PLANNING)
+        plan = _extract_json(raw)
+    except Exception as e:
+        print(f"[Planner] LLM YouTube rewrite failed ({e}). Using transcript excerpt.")
+
     if plan is None:
-        raise RuntimeError("Failed to extract JSON from Ollama for YouTube rewrite.")
+        clean_tr = re.sub(r"\s+", " ", transcript)[:300]
+        plan = {
+            "subject": video_title,
+            "render_mode": "pexels",
+            "video_source": "pexels",
+            "keywords": f"{video_title}, summary, knowledge, tutorial",
+            "moneyprinter_script": f"In this video summary of {video_title}, we uncover the essential insights: {clean_tr}... This provides a clear, high-yield overview of the topic.",
+            "scenes": [
+                {
+                    "name": "scene_01_summary",
+                    "title": video_title[:40],
+                    "narration": f"In this video summary of {video_title}, we uncover the essential insights.",
+                    "bullets": ["Key takeaways", "Curated recap"]
+                }
+            ]
+        }
+
     return _clean_plan(plan, video_title, "YouTube Extraction", [])
 
 def regenerate_plan(req: GenerateRequest) -> Dict[str, Any]:

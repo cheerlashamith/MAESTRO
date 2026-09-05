@@ -1,132 +1,205 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  LayoutDashboard, 
   Video, 
   Activity, 
   Film, 
   History, 
   Settings,
   Server,
-  Brain,
-  Plug,
   ListTodo,
-  Database,
   BarChart3,
-  Wrench,
   LogOut,
-  Share2
+  Share2,
+  Shield,
+  HardDrive,
+  ChevronRight,
+  Sparkles
 } from 'lucide-react';
 import './Sidebar.css';
 
 export default function Sidebar() {
-  const role = localStorage.getItem('role') || 'user';
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isAdminPortal = location.pathname.startsWith('/admin');
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-header">
-        <div className="logo">
-          <div className="logo-icon"></div>
-          <h2>AutoCourse</h2>
-        </div>
+    <aside className="sidebar-enterprise">
+      <div className="sidebar-section-header">
+        <span className="sidebar-portal-heading">
+          {isAdminPortal ? 'ADMINISTRATIVE SUITE' : 'CONTENT PRODUCTION'}
+        </span>
+        <span className="sidebar-portal-sub">
+          {isAdminPortal ? 'Engine & IAM Control' : 'Video Creator Tools'}
+        </span>
       </div>
-      
-      <div className="sidebar-content">
-        {role === 'user' && (
-          <div className="nav-section">
-            <span className="section-title">USER</span>
-            <nav>
-              <NavLink to="/user/dashboard" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-                <LayoutDashboard size={18} />
-                <span>Dashboard</span>
-              </NavLink>
-              <NavLink to="/user/create" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-                <Video size={18} />
-                <span>Create Video</span>
-              </NavLink>
-              <NavLink to="/user/progress" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-                <Activity size={18} />
-                <span>Progress</span>
-              </NavLink>
-              <NavLink to="/user/videos" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-                <Film size={18} />
-                <span>My Videos</span>
-              </NavLink>
-              <NavLink to="/user/publisher" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-                <Share2 size={18} />
-                <span>YouTube Publisher</span>
-              </NavLink>
-              <NavLink to="/user/history" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-                <History size={18} />
-                <span>History</span>
-              </NavLink>
-              <NavLink to="/user/settings" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-                <Settings size={18} />
-                <span>Settings</span>
-              </NavLink>
-            </nav>
-          </div>
+
+      <div className="sidebar-nav-container">
+        {/* USER PORTAL NAVIGATION - AI Studio is hidden here per user request! */}
+        {!isAdminPortal && (
+          <nav className="nav-item-list">
+            <NavLink to="/user/create" className={({isActive}) => isActive ? "nav-item-row active" : "nav-item-row"}>
+              <div className="nav-item-icon-box">
+                <Video size={17} />
+              </div>
+              <div className="nav-item-meta">
+                <span className="nav-item-title">Create Video</span>
+                <span className="nav-item-sub">Course, Story & Shorts</span>
+              </div>
+              <ChevronRight size={14} className="nav-item-chevron" />
+            </NavLink>
+
+            <NavLink to="/user/progress" className={({isActive}) => isActive ? "nav-item-row active" : "nav-item-row"}>
+              <div className="nav-item-icon-box">
+                <Activity size={17} />
+              </div>
+              <div className="nav-item-meta">
+                <span className="nav-item-title">Live Progress</span>
+                <span className="nav-item-sub">Execution & HITL Review</span>
+              </div>
+              <ChevronRight size={14} className="nav-item-chevron" />
+            </NavLink>
+
+            <NavLink to="/user/videos" className={({isActive}) => isActive ? "nav-item-row active" : "nav-item-row"}>
+              <div className="nav-item-icon-box">
+                <Film size={17} />
+              </div>
+              <div className="nav-item-meta">
+                <span className="nav-item-title">My Videos</span>
+                <span className="nav-item-sub">Rendered MP4 Gallery</span>
+              </div>
+              <ChevronRight size={14} className="nav-item-chevron" />
+            </NavLink>
+
+            <NavLink to="/user/publisher" className={({isActive}) => isActive ? "nav-item-row active" : "nav-item-row"}>
+              <div className="nav-item-icon-box">
+                <Share2 size={17} />
+              </div>
+              <div className="nav-item-meta">
+                <span className="nav-item-title">YouTube Publisher</span>
+                <span className="nav-item-sub">SEO & Channel Upload</span>
+              </div>
+              <ChevronRight size={14} className="nav-item-chevron" />
+            </NavLink>
+
+            <NavLink to="/user/history" className={({isActive}) => isActive ? "nav-item-row active" : "nav-item-row"}>
+              <div className="nav-item-icon-box">
+                <History size={17} />
+              </div>
+              <div className="nav-item-meta">
+                <span className="nav-item-title">Task History</span>
+                <span className="nav-item-sub">Completed Generations</span>
+              </div>
+              <ChevronRight size={14} className="nav-item-chevron" />
+            </NavLink>
+
+            <NavLink to="/user/settings" className={({isActive}) => isActive ? "nav-item-row active" : "nav-item-row"}>
+              <div className="nav-item-icon-box">
+                <Settings size={17} />
+              </div>
+              <div className="nav-item-meta">
+                <span className="nav-item-title">Preferences</span>
+                <span className="nav-item-sub">Voices & Resolution</span>
+              </div>
+              <ChevronRight size={14} className="nav-item-chevron" />
+            </NavLink>
+          </nav>
         )}
 
-        {role === 'admin' && (
-          <div className="nav-section">
-            <span className="section-title">ADMIN</span>
-            <nav>
-              <NavLink to="/admin/system" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-                <Server size={18} />
-                <span>System</span>
-              </NavLink>
-              <NavLink to="/admin/brain" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-                <Brain size={18} />
-                <span>Brain Manager</span>
-              </NavLink>
-              <NavLink to="/admin/plugins" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-                <Plug size={18} />
-                <span>Plugins</span>
-              </NavLink>
-              <NavLink to="/admin/jobs" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-                <ListTodo size={18} />
-                <span>Jobs</span>
-              </NavLink>
-              <NavLink to="/admin/cache" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-                <Database size={18} />
-                <span>Cache</span>
-              </NavLink>
-              <NavLink to="/admin/analytics" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-                <BarChart3 size={18} />
-                <span>System Analytics</span>
-              </NavLink>
-              <NavLink to="/admin/analytics-dashboard" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-                <Activity size={18} />
-                <span>Agent Analytics</span>
-              </NavLink>
-              <NavLink to="/admin/config" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-                <Wrench size={18} />
-                <span>Configuration</span>
-              </NavLink>
-            </nav>
-          </div>
+        {/* ADMIN PORTAL NAVIGATION - AI Studio Workflow Architect is here! */}
+        {isAdminPortal && (
+          <nav className="nav-item-list">
+            <NavLink to="/admin/studio" className={({isActive}) => isActive ? "nav-item-row active" : "nav-item-row"}>
+              <div className="nav-item-icon-box">
+                <Sparkles size={17} />
+              </div>
+              <div className="nav-item-meta">
+                <span className="nav-item-title">Workflow Architect</span>
+                <span className="nav-item-sub">AI Studio Visual Canvas</span>
+              </div>
+              <span className="admin-pill-badge">STUDIO</span>
+            </NavLink>
+
+            <NavLink to="/admin/iam" className={({isActive}) => isActive ? "nav-item-row active" : "nav-item-row"}>
+              <div className="nav-item-icon-box">
+                <Shield size={17} />
+              </div>
+              <div className="nav-item-meta">
+                <span className="nav-item-title">IAM & Permissions</span>
+                <span className="nav-item-sub">Role Matrix & Policies</span>
+              </div>
+              <span className="admin-pill-badge">RBAC</span>
+            </NavLink>
+
+            <NavLink to="/admin/providers" className={({isActive}) => isActive ? "nav-item-row active" : "nav-item-row"}>
+              <div className="nav-item-icon-box">
+                <HardDrive size={17} />
+              </div>
+              <div className="nav-item-meta">
+                <span className="nav-item-title">Engine & Providers</span>
+                <span className="nav-item-sub">Ollama, ComfyUI, TTS</span>
+              </div>
+              <ChevronRight size={14} className="nav-item-chevron" />
+            </NavLink>
+
+            <NavLink to="/admin/jobs" className={({isActive}) => isActive ? "nav-item-row active" : "nav-item-row"}>
+              <div className="nav-item-icon-box">
+                <ListTodo size={17} />
+              </div>
+              <div className="nav-item-meta">
+                <span className="nav-item-title">Jobs & Workers</span>
+                <span className="nav-item-sub">Monitor Background Tasks</span>
+              </div>
+              <ChevronRight size={14} className="nav-item-chevron" />
+            </NavLink>
+
+            <NavLink to="/admin/system" className={({isActive}) => isActive ? "nav-item-row active" : "nav-item-row"}>
+              <div className="nav-item-icon-box">
+                <Server size={17} />
+              </div>
+              <div className="nav-item-meta">
+                <span className="nav-item-title">System Metrics</span>
+                <span className="nav-item-sub">GPU & RAM Health</span>
+              </div>
+              <ChevronRight size={14} className="nav-item-chevron" />
+            </NavLink>
+
+            <NavLink to="/admin/analytics" className={({isActive}) => isActive ? "nav-item-row active" : "nav-item-row"}>
+              <div className="nav-item-icon-box">
+                <BarChart3 size={17} />
+              </div>
+              <div className="nav-item-meta">
+                <span className="nav-item-title">System Analytics</span>
+                <span className="nav-item-sub">Throughput & Success</span>
+              </div>
+              <ChevronRight size={14} className="nav-item-chevron" />
+            </NavLink>
+          </nav>
         )}
       </div>
-      
-      <div className="sidebar-footer">
-        <div className="user-profile">
-          <div className="avatar">{role === 'admin' ? 'AD' : 'US'}</div>
-          <div className="user-info">
-            <span className="user-name">{role === 'admin' ? 'Demo Admin' : 'Demo User'}</span>
-            <span className="user-role">{role === 'admin' ? 'System Administrator' : 'Video Creator'}</span>
+
+      {/* Footer Account Status */}
+      <div className="sidebar-enterprise-footer">
+        <div className="sidebar-user-pill">
+          <div className="sidebar-avatar-circle">
+            SM
+          </div>
+          <div className="sidebar-user-info">
+            <span className="sidebar-user-name">Shamith</span>
+            <span className="sidebar-user-role">{isAdminPortal ? 'System Administrator' : 'Video Creator'}</span>
           </div>
           <button 
-            className="icon-btn logout-btn" 
-            title="Log Out"
+            className="sidebar-logout-btn" 
+            title="Sign Out"
             onClick={() => {
               localStorage.removeItem('role');
-              window.location.href = '/login';
+              navigate('/login');
             }}
           >
-            <LogOut size={18} />
+            <LogOut size={15} />
           </button>
         </div>
       </div>
     </aside>
   );
 }
+

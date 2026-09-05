@@ -22,9 +22,10 @@ class AIModelPlugin(ABC):
         pass
 
     def is_healthy(self) -> bool:
-        # Allow up to 5 consecutive failures before marking unhealthy.
-        # Resets automatically on server restart since state is in-memory.
-        return self.consecutive_failures < 5
+        if self.consecutive_failures >= 3:
+            return False
+        from backend.services.ollama_client import _ollama_is_up
+        return _ollama_is_up(0.4)
 
     def reset_health(self):
         """Reset failure counters — called on server startup."""

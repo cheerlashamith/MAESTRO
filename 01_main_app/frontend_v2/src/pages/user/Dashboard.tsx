@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Video, Clock, CheckCircle2, AlertCircle, PlayCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { fetchCurrentUser } from '../../utils/userSession';
 import './Dashboard.css';
 
 interface JobSummary {
@@ -22,11 +23,15 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch('/api/jobs').then(res => res.json()).then(data => {
-      const arr = Object.values(data) as JobSummary[];
-      arr.reverse();
-      setJobs(arr);
-    }).catch(console.error);
+    fetchCurrentUser()
+      .then(user => fetch(`/api/jobs?user_id=${encodeURIComponent(user.username)}`))
+      .then(res => res.json())
+      .then(data => {
+        const arr = Object.values(data) as JobSummary[];
+        arr.reverse();
+        setJobs(arr);
+      })
+      .catch(console.error);
 
     fetch('/api/admin/plugins').then(res => res.json()).then(data => {
       setPlugins(data);

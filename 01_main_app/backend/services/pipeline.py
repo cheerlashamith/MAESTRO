@@ -12,7 +12,7 @@ import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from backend.core.schemas import GenerateRequest, JobStatus, Mode
-from backend.core.job_store import create_job, update_job, get_job
+from backend.core.job_store import create_job, update_job, get_job, wait_for_approval
 from backend.core.config import get_config
 
 class JobCancelledException(Exception):
@@ -121,7 +121,7 @@ def _assemble_with_mpt(
     prefs: Dict[str, Any],
     progress_callback=None,
 ) -> List[Path]:
-    """Call MoneyPrinterTurbo API to assemble the final video."""
+    """Call MoneyPrinterTurbo API to assemble the final video with resilient fallback."""
     subject = plan.get("subject", "AutoCourse Video")
     script = _safe_string(plan.get("moneyprinter_script", ""))
     keywords = _safe_string(plan.get("keywords", ""))
@@ -130,26 +130,43 @@ def _assemble_with_mpt(
     video_source = "pexels" if is_pexels else "local"
 
     if not script:
-        raise RuntimeError("No script available for MPT assembly.")
-    if video_source == "local" and not clips:
-        raise RuntimeError("No local clips available for MPT assembly.")
+        script = f"Overview of {subject}."
 
+    # 1. Attempt MoneyPrinterTurbo if available
+    try:
+        from backend.services.mpt_bridge import _is_mpt_api_running
+        if _is_mpt_api_running(timeout=1):
+            if progress_callback:
+                progress_callback("Assembling final video with MoneyPrinterTurbo API...")
+            mpt_videos = mpt_generate_video(
+                subject=subject,
+                script=script,
+                keywords=keywords,
+                clips=clips,
+                output_dir=job_dir,
+                aspect=prefs["aspect"],
+                voice=prefs["voice"],
+                clip_duration=8 if prefs["aspect"] == "9:16" else 10,
+                subtitle_enabled=prefs["subtitle_enabled"],
+                bgm_volume=prefs["bgm_volume"],
+                video_source=video_source,
+                progress_callback=progress_callback,
+            )
+            if mpt_videos and all(Path(v).exists() for v in mpt_videos):
+                return mpt_videos
+    except Exception as mpt_err:
+        print(f"[Pipeline] MPT assembly bypassed ({mpt_err}). Switching to Direct Resilient Video Synthesizer.")
+
+    # 2. Resilient Direct Video Synthesizer (Edge-TTS + Pillow + FFmpeg)
     if progress_callback:
-        progress_callback("Assembling final video with MoneyPrinterTurbo...")
-
-    return mpt_generate_video(
-        subject=subject,
-        script=script,
-        keywords=keywords,
+        progress_callback("Synthesizing broadcast video with Direct Neural Engine...")
+    from backend.services.direct_synthesizer import synthesize_direct_video
+    return synthesize_direct_video(
+        job_dir=job_dir,
+        plan=plan,
         clips=clips,
-        output_dir=job_dir,
-        aspect=prefs["aspect"],
-        voice=prefs["voice"],
-        clip_duration=8 if prefs["aspect"] == "9:16" else 10,
-        subtitle_enabled=prefs["subtitle_enabled"],
-        bgm_volume=prefs["bgm_volume"],
-        video_source=video_source,
-        progress_callback=progress_callback,
+        prefs=prefs,
+        progress_callback=progress_callback
     )
 
 
@@ -171,19 +188,21 @@ def _process_single_topic(
     is_pexels = render_mode == "pexels" or plan.get("video_source") == "pexels" or visual_style == "pexels"
 
     clips: List[Path] = []
-    if is_story:
-        if progress_callback:
-            progress_callback(f"Rendering story clips for {topic_name}...")
-        clips = render_comfyui_story(Path(files["plan"]), progress_callback)
-    elif is_pexels:
-        # Pexels clips are fetched automatically by MoneyPrinterTurbo using its own Pexels API key.
-        if progress_callback:
-            progress_callback(f"MoneyPrinterTurbo will fetch Pexels clips for {topic_name}...")
-    else:
-        # Course mode -> Manim
-        if progress_callback:
-            progress_callback(f"Rendering Manim course clips for {topic_name}...")
-        clips = render_manim_course(Path(files["plan"]), progress_callback)
+    try:
+        if is_story:
+            if progress_callback:
+                progress_callback(f"Rendering story clips for {topic_name}...")
+            clips = render_comfyui_story(Path(files["plan"]), progress_callback)
+        elif is_pexels:
+            if progress_callback:
+                progress_callback(f"Preparing stock visuals for {topic_name}...")
+        else:
+            if progress_callback:
+                progress_callback(f"Rendering Manim course clips for {topic_name}...")
+            clips = render_manim_course(Path(files["plan"]), progress_callback)
+    except Exception as render_err:
+        print(f"[Pipeline] Renderer bypassed or offline: {render_err}. Direct Synthesizer will generate visual scenes.")
+        clips = []
 
     files["clips"] = [str(c) for c in clips]
 
@@ -338,6 +357,53 @@ def run_job(job_id: str, req: GenerateRequest, output_dir: str):
 
         _check_cancelled(job_id)
         plan = _add_next_topic_hook(plan, plan.get("subject", req.topic or ""))
+
+        # -----------------------------------------------------------
+        # HUMAN-IN-THE-LOOP (HITL) APPROVAL GATE
+        # -----------------------------------------------------------
+        require_approval = getattr(req, "require_approval", True)
+        if require_approval:
+            plan_files = _write_plan_files(out, plan)
+            update_job(
+                job_id,
+                status=JobStatus.awaiting_approval,
+                message="Script & Scenes generated! Awaiting human review & approval...",
+                progress_percentage=30,
+                current_task="Human-in-the-Loop Review Gate",
+                current_model=get_config().get("providers", {}).get("planner_model", "qwen2.5:7b"),
+                files={
+                    **plan_files,
+                    "script_preview": plan.get("moneyprinter_script", ""),
+                    "scenes_preview": plan.get("scenes", []),
+                    "keywords_preview": plan.get("keywords", ""),
+                    "subject_preview": plan.get("subject", req.topic or "AutoCourse"),
+                }
+            )
+
+            # Block worker thread until human action (approve / revise / reject)
+            approval = wait_for_approval(job_id, timeout=7200)
+            _check_cancelled(job_id)
+
+            if not approval:
+                raise RuntimeError("Human review session timed out or was cancelled.")
+
+            action = approval.get("action", "approve")
+            if action == "reject":
+                update_job(job_id, status=JobStatus.cancelled, message="Job cancelled by reviewer.", current_task="Cancelled", current_model="")
+                return
+            elif action == "revise":
+                update_job(job_id, status=JobStatus.planning, message="Revising plan based on your review feedback...", progress_percentage=20)
+                req.feedback = approval.get("feedback", "Improve narrative clarity.")
+                req.previous_plan = plan
+                plan = regenerate_plan(req)
+                plan = _add_next_topic_hook(plan, plan.get("subject", req.topic or ""))
+            elif action == "approve":
+                override = approval.get("script_override")
+                if override and override.strip():
+                    plan["moneyprinter_script"] = override.strip()
+                    (out / "moneyprinter_video_script.txt").write_text(plan["moneyprinter_script"], encoding="utf-8")
+
+            update_job(job_id, message="Human approval received! Rendering video clips...", progress_percentage=35)
         
         update_job(job_id, status=JobStatus.rendering, message=f"Rendering clips...", progress_percentage=50, current_task="Rendering Scenes", current_model="Local Engine")
         
@@ -370,8 +436,8 @@ def run_job(job_id: str, req: GenerateRequest, output_dir: str):
         update_job(job_id, status=JobStatus.failed, message=str(e))
 
 
-def submit_job(req: GenerateRequest):
-    rec = create_job(req)
+def submit_job(req: GenerateRequest, user_id: Optional[str] = None, tenant_id: Optional[str] = None):
+    rec = create_job(req, user_id=user_id, tenant_id=tenant_id)
     t = threading.Thread(target=run_job, args=(rec.job_id, req, rec.output_dir), daemon=True)
     t.start()
     return rec

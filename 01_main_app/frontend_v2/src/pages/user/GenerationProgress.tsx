@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CheckCircle2, XCircle, FileVideo, Terminal } from 'lucide-react';
+import HumanInTheLoopReview from '../../components/HumanInTheLoopReview';
 import './GenerationProgress.css';
 
 interface JobData {
@@ -135,26 +136,48 @@ export default function GenerationProgress() {
             <div className="step-indicator">1</div>
             <div className="step-content">
               <h4>Planning</h4>
-              <p>{job?.current_model || 'LLM'}</p>
+              <p>{job?.current_model || 'LLM Planner'}</p>
             </div>
           </div>
-          <div className={`step-connector ${progress >= 30 ? 'active' : ''}`}></div>
-          <div className={`step ${progress >= 30 ? 'active' : ''}`}>
+          <div className={`step-connector ${progress >= 30 || status === 'awaiting_approval' ? 'active' : ''}`}></div>
+          <div className={`step ${status === 'awaiting_approval' ? 'active pulse-amber' : (progress >= 35 ? 'active' : '')}`}>
             <div className="step-indicator">2</div>
             <div className="step-content">
-              <h4>Rendering</h4>
-              <p>ComfyUI / Manim</p>
+              <h4>HITL Review</h4>
+              <p>{status === 'awaiting_approval' ? 'Action Required' : 'Approved'}</p>
             </div>
           </div>
-          <div className={`step-connector ${progress >= 80 ? 'active' : ''}`}></div>
-          <div className={`step ${progress >= 80 ? 'active' : ''}`}>
+          <div className={`step-connector ${progress >= 50 ? 'active' : ''}`}></div>
+          <div className={`step ${progress >= 50 ? 'active' : ''}`}>
             <div className="step-indicator">3</div>
             <div className="step-content">
+              <h4>Rendering</h4>
+              <p>Visual Engine</p>
+            </div>
+          </div>
+          <div className={`step-connector ${progress >= 75 ? 'active' : ''}`}></div>
+          <div className={`step ${progress >= 75 ? 'active' : ''}`}>
+            <div className="step-indicator">4</div>
+            <div className="step-content">
               <h4>Assembling</h4>
-              <p>MoneyPrinterTurbo</p>
+              <p>MPT / Direct Mux</p>
             </div>
           </div>
         </div>
+
+        {/* Human-in-the-Loop Approval & Review Gate */}
+        {status === 'awaiting_approval' && job && (
+          <HumanInTheLoopReview 
+            jobId={jobId}
+            files={job.files || {}}
+            onApproved={() => {
+              setLogs(l => [...l, { time: new Date().toLocaleTimeString(), msg: "Human approval registered. Starting video rendering & assembly..." }]);
+            }}
+            onCancelled={() => {
+              setLogs(l => [...l, { time: new Date().toLocaleTimeString(), msg: "Job cancelled by reviewer." }]);
+            }}
+          />
+        )}
 
         <div className="progress-actions">
           {status === 'completed' ? (
@@ -162,7 +185,7 @@ export default function GenerationProgress() {
               <FileVideo size={20} />
               Download Final MP4
             </button>
-          ) : (status !== 'failed' && status !== 'cancelled') ? (
+          ) : (status !== 'failed' && status !== 'cancelled' && status !== 'awaiting_approval') ? (
             <button className="btn btn-outline btn-lg text-danger" onClick={cancelJob}>
               Cancel Job
             </button>

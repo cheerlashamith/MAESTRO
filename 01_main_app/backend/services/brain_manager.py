@@ -1,37 +1,72 @@
 from __future__ import annotations
 import importlib
 import pkgutil
-from typing import List, Optional
+import threading
+from typing import List
 from backend.core.schemas import TaskType
 from backend.services.models.base_plugin import AIModelPlugin
 from backend.services.cache_manager import CacheManager
 from backend.core.config import get_config
 
+
+def _dedupe(plugins: List[AIModelPlugin]) -> List[AIModelPlugin]:
+    """Order-preserving dedupe.
+
+    set() ordering depends on object id(), so the fallback chain used to vary
+    between runs and the "preferred" model wasn't reliably tried first.
+    """
+    seen = set()
+    out = []
+    for p in plugins:
+        if id(p) not in seen:
+            seen.add(id(p))
+            out.append(p)
+    return out
+
+
 class BrainManager:
     _plugins: List[AIModelPlugin] = []
     _initialized = False
+    _load_lock = threading.Lock()
 
     @classmethod
     def _load_plugins(cls):
         if cls._initialized:
             return
-        
-        # Discover and instantiate all plugins in backend.services.models
-        import backend.services.models as models_pkg
-        
-        for _, module_name, _ in pkgutil.iter_modules(models_pkg.__path__):
-            if module_name == "base_plugin":
-                continue
-                
-            module = importlib.import_module(f"backend.services.models.{module_name}")
-            for attr_name in dir(module):
-                attr = getattr(module, attr_name)
-                if isinstance(attr, type) and issubclass(attr, AIModelPlugin) and attr is not AIModelPlugin:
-                    plugin = attr()
-                    plugin.reset_health()  # Fresh start — no stale failure state
-                    cls._plugins.append(plugin)
-                    
-        cls._initialized = True
+
+        # Double-checked locking: pipeline worker threads call ask() concurrently,
+        # and without the lock each could append a full duplicate plugin set.
+        with cls._load_lock:
+            if cls._initialized:
+                return
+
+            # Discover and instantiate all plugins in backend.services.models
+            import backend.services.models as models_pkg
+
+            discovered: List[AIModelPlugin] = []
+            seen_types = set()
+            for _, module_name, _ in pkgutil.iter_modules(models_pkg.__path__):
+                if module_name == "base_plugin":
+                    continue
+
+                module = importlib.import_module(f"backend.services.models.{module_name}")
+                for attr_name in dir(module):
+                    attr = getattr(module, attr_name)
+                    if (
+                        isinstance(attr, type)
+                        and issubclass(attr, AIModelPlugin)
+                        and attr is not AIModelPlugin
+                        and attr not in seen_types
+                    ):
+                        # A class imported into two modules would otherwise be
+                        # instantiated twice and appear duplicated in the UI.
+                        seen_types.add(attr)
+                        plugin = attr()
+                        plugin.reset_health()  # Fresh start — no stale failure state
+                        discovered.append(plugin)
+
+            cls._plugins = discovered
+            cls._initialized = True
 
     @classmethod
     def _get_model_for_task(cls, task_type: TaskType) -> List[AIModelPlugin]:
@@ -54,7 +89,11 @@ class BrainManager:
         preferred = []
 
         if default_llm in ["openai", "gpt-4o-mini"]:
-            preferred = [p for p in capable_plugins if p.model_name() == "gpt-4o-mini"]
+            # Match whatever providers.openai_model resolves to, not a literal,
+            # so setting a different OpenAI model still routes to that plugin.
+            from backend.services.models.openai_gpt4o_mini import configured_openai_model
+            target = configured_openai_model()
+            preferred = [p for p in capable_plugins if p.model_name() == target]
         elif task_type in [TaskType.PLANNING, TaskType.STORY, TaskType.SYLLABUS]:
             target = cfg.get("planner_model", "qwen2.5:7b")
             preferred = [p for p in capable_plugins if p.model_name() == target]
@@ -63,7 +102,7 @@ class BrainManager:
             if len(prompt) > 2500:
                 target = cfg.get("planner_model", "qwen2.5:7b") # Large code -> planner
             preferred = [p for p in cls._plugins if p.model_name() == target]
-            capable_plugins = list(set(capable_plugins + preferred))
+            capable_plugins = _dedupe(capable_plugins + preferred)
         elif task_type in [TaskType.KEYWORDS, TaskType.CLASSIFY, TaskType.ENRICHMENT]:
             target = cfg.get("utility_model", "gemma3:4b")
             preferred = [p for p in capable_plugins if p.model_name() == target]

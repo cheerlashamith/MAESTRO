@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle2, XCircle, Clock, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { fetchCurrentUser } from '../../utils/userSession';
 import './History.css';
 
 interface JobSummary {
@@ -28,7 +29,8 @@ export default function History() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch('/api/jobs')
+    fetchCurrentUser()
+      .then(user => fetch(`/api/jobs?user_id=${encodeURIComponent(user.username)}`))
       .then(res => res.json())
       .then(data => {
         const arr = Object.values(data) as JobSummary[];

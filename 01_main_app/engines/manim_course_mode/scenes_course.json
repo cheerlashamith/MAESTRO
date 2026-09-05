@@ -1,153 +1,87 @@
 {
-  "subject": "Applications of Linked Lists",
+  "subject": "Distributed Consensus and Raft Protocol",
+  "render_mode": "course",
   "visual_style": "manim_course",
-  "keywords": "linked list applications, dynamic memory allocation, polynomial representation, undo system, music playlist, hash chaining, data structures, JNTUK R23, computer science, linked list examples",
-  "moneyprinter_script": "Welcome to our lesson on the real-world applications of linked lists. Let's begin with dynamic memory allocation, where linked lists excel in managing memory that grows or shrinks during program execution. Next, we'll explore how linked lists efficiently represent polynomials by linking terms with varying exponents. Then, we'll see how undo systems in software use linked lists to track changes in a reversible timeline. For music playlists, linked lists enable seamless navigation between tracks in a circular structure. Finally, we'll examine hash chaining, where linked lists resolve collisions in hash tables by linking entries with the same hash value. Each application highlights the flexibility and power of linked lists in solving complex problems. Let's dive into each example now.\n\nIn the next video, we will continue with Introduction to Stacks. Stay tuned!",
+  "keywords": "Distributed Consensus and Raft Protocol, Data Structures, Computer Science, Algorithms, Engineering",
+  "moneyprinter_script": "Welcome to this lecture on Distributed Consensus and Raft Protocol in General Topic. Section 1: Introduction. In computer science and algorithmic system design, mastering Introduction provides critical insights into data organization and computational efficiency. Section 2: Core Concept. In computer science and algorithmic system design, mastering Core Concept provides critical insights into data organization and computational efficiency. Section 3: Example. In computer science and algorithmic system design, mastering Example provides critical insights into data organization and computational efficiency. Section 4: Summary. In computer science and algorithmic system design, mastering Summary provides critical insights into data organization and computational efficiency. To summarize, Distributed Consensus and Raft Protocol forms a cornerstone concept. Practice these fundamentals to design robust and scalable software.",
   "scenes": [
     {
-      "name": "scene_01_title",
-      "title": "Applications of Linked Lists",
-      "diagram_type": "title_card",
+      "name": "scene_01_introduction",
+      "title": "Introduction",
       "bullets": [
-        "Explore real-world uses of linked lists",
-        "Understand key applications in computing"
+        "Core principles of Introduction",
+        "Operational workflow in Distributed Consensus and Raft Protocol",
+        "Efficiency metrics and asymptotic performance"
       ],
-      "visual_data": {
-        "main_title": "Applications of Linked Lists",
-        "subtitle": "Linked Lists"
-      },
-      "narration": "Welcome to this lesson on the practical applications of linked lists. We'll explore how these structures solve real-world problems in dynamic memory, polynomials, undo systems, playlists, and hash tables."
-    },
-    {
-      "name": "scene_02_dynamic_memory",
-      "title": "Dynamic Memory Allocation",
-      "diagram_type": "flowchart",
-      "bullets": [
-        "Memory grows/shrinks as needed",
-        "Efficient use of available memory",
-        "Avoids fixed-size array limitations"
-      ],
+      "narration": "Section 1: Introduction. In computer science and algorithmic system design, mastering Introduction provides critical insights into data organization and computational efficiency.",
+      "diagram_type": "process",
       "visual_data": {
         "steps": [
-          "Allocate memory block",
-          "Link to previous node",
-          "Add new data",
-          "Traverse linked list"
-        ],
-        "direction": "right",
-        "nodes": [
-          "A",
-          "B",
-          "C",
-          "D"
+          "Input Specification",
+          "Processing Step",
+          "Validation",
+          "Output State"
         ]
-      },
-      "narration": "Dynamic memory allocation uses linked lists to manage memory that changes size during runtime. Each node points to the next available block, allowing efficient memory utilization without fixed-size constraints."
+      }
     },
     {
-      "name": "scene_03_polynomial_representation",
-      "title": "Polynomial Representation",
-      "diagram_type": "network",
+      "name": "scene_02_core_concept",
+      "title": "Core Concept",
       "bullets": [
-        "Stores terms with exponents",
-        "Links terms in descending order",
-        "Simplifies arithmetic operations"
+        "Core principles of Core Concept",
+        "Operational workflow in Distributed Consensus and Raft Protocol",
+        "Efficiency metrics and asymptotic performance"
       ],
+      "narration": "Section 2: Core Concept. In computer science and algorithmic system design, mastering Core Concept provides critical insights into data organization and computational efficiency.",
+      "diagram_type": "array",
       "visual_data": {
-        "nodes": [
-          "3x^2",
-          "5x",
-          "7"
+        "values": [
+          12,
+          24,
+          36,
+          48,
+          60
         ],
-        "edges": [
-          "3x^2 → 5x",
-          "5x → 7"
-        ],
-        "caption": "Polynomial terms linked by exponent"
-      },
-      "narration": "Linked lists represent polynomials by linking terms with varying exponents. This structure simplifies addition, multiplication, and other operations by maintaining term order."
+        "highlight": 1
+      }
     },
     {
-      "name": "scene_04_undo_systems",
-      "title": "Undo Systems",
-      "diagram_type": "timeline",
+      "name": "scene_03_example",
+      "title": "Example",
       "bullets": [
-        "Tracks user actions sequentially",
-        "Stores operations in reverse order",
-        "Enables step-by-step undo"
+        "Core principles of Example",
+        "Operational workflow in Distributed Consensus and Raft Protocol",
+        "Efficiency metrics and asymptotic performance"
       ],
+      "narration": "Section 3: Example. In computer science and algorithmic system design, mastering Example provides critical insights into data organization and computational efficiency.",
+      "diagram_type": "process",
       "visual_data": {
-        "events": [
-          "Action 1",
-          "Action 2",
-          "Action 3"
-        ],
-        "direction": "left",
-        "highlight": 2,
         "steps": [
-          "Input",
-          "Process",
-          "Output"
+          "Input Specification",
+          "Processing Step",
+          "Validation",
+          "Output State"
         ]
-      },
-      "narration": "Undo systems use linked lists to store user actions in a timeline. Each operation is linked to the previous, allowing seamless backward navigation through the history."
+      }
     },
     {
-      "name": "scene_05_music_playlist",
-      "title": "Music Playlist",
-      "diagram_type": "cycle",
+      "name": "scene_04_summary",
+      "title": "Summary",
       "bullets": [
-        "Circular structure for looping",
-        "Easy navigation between tracks",
-        "Supports infinite playback"
+        "Core principles of Summary",
+        "Operational workflow in Distributed Consensus and Raft Protocol",
+        "Efficiency metrics and asymptotic performance"
       ],
+      "narration": "Section 4: Summary. In computer science and algorithmic system design, mastering Summary provides critical insights into data organization and computational efficiency.",
+      "diagram_type": "process",
       "visual_data": {
-        "nodes": [
-          "Song A",
-          "Song B",
-          "Song C"
-        ],
-        "edges": [
-          "Song A → Song B",
-          "Song B → Song C",
-          "Song C → Song A"
-        ],
-        "caption": "Circular playlist",
         "steps": [
-          "Step 1",
-          "Step 2",
-          "Step 3",
-          "Step 4"
+          "Input Specification",
+          "Processing Step",
+          "Validation",
+          "Output State"
         ]
-      },
-      "narration": "Music playlists use circular linked lists to enable seamless looping between tracks. This structure allows users to navigate forward or backward through songs effortlessly."
-    },
-    {
-      "name": "scene_06_hash_chaining",
-      "title": "Hash Chaining",
-      "diagram_type": "network",
-      "bullets": [
-        "Resolves hash collisions",
-        "Links entries with same hash",
-        "Maintains insertion order"
-      ],
-      "visual_data": {
-        "buckets": [
-          "Bucket 1",
-          "Bucket 2"
-        ],
-        "nodes": [
-          "Entry A",
-          "Entry B",
-          "Entry C"
-        ],
-        "edges": [
-          "Entry A → Entry B",
-          "Entry B → Entry C"
-        ],
-        "caption": "Hash table with chaining"
-      },
-      "narration": "Hash chaining uses linked lists to handle collisions in hash tables. When multiple entries share the same hash value, they are linked in a chain within the same bucket."
+      }
     }
   ]
 }

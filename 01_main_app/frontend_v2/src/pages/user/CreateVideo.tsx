@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Sparkles, MonitorPlay, Wand2, User, Play, Loader2, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { fetchCurrentUser } from '../../utils/userSession';
 import './CreateVideo.css';
 
 export default function CreateVideo() {
@@ -52,6 +53,7 @@ export default function CreateVideo() {
     }
     
     try {
+      const user = await fetchCurrentUser();
       const response = await fetch('/api/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -65,7 +67,9 @@ export default function CreateVideo() {
           auto_publish: autoPublish,
           publish_privacy: publishPrivacy,
           publish_schedule_time: scheduleTimeIso,
-          publish_schedule_mode: publishScheduleMode
+          publish_schedule_mode: publishScheduleMode,
+          user_id: user.username,
+          tenant_id: 'default'
         })
       });
       
@@ -152,8 +156,19 @@ export default function CreateVideo() {
           <div className="form-group flex-1">
             <label>Voice Provider</label>
             <select className="input-field" value={voice} onChange={e => setVoice(e.target.value)}>
-              <option value="en-US-AndrewMultilingualNeural">Edge TTS - Andrew (Male)</option>
-              <option value="en-US-JennyNeural">Edge TTS - Jenny (Female)</option>
+              <option value="en-US-AndrewMultilingualNeural">Edge TTS - Andrew (US Multilingual Male)</option>
+              <option value="en-US-JennyNeural">Edge TTS - Jenny (US Natural Female)</option>
+              <option value="en-US-GuyNeural">Edge TTS - Guy (US Narrative Male)</option>
+              <option value="en-US-AriaNeural">Edge TTS - Aria (US Expressive Female)</option>
+              <option value="en-US-ChristopherNeural">Edge TTS - Christopher (US Authoritative Male)</option>
+              <option value="en-US-EricNeural">Edge TTS - Eric (US Clear Male)</option>
+              <option value="en-US-MichelleNeural">Edge TTS - Michelle (US Warm Female)</option>
+              <option value="en-GB-RyanNeural">Edge TTS - Ryan (UK British Male)</option>
+              <option value="en-GB-SoniaNeural">Edge TTS - Sonia (UK British Female)</option>
+              <option value="en-IN-PrabhatNeural">Edge TTS - Prabhat (India Male)</option>
+              <option value="en-IN-NeerjaNeural">Edge TTS - Neerja (India Female)</option>
+              <option value="en-AU-WilliamNeural">Edge TTS - William (Australia Male)</option>
+              <option value="en-AU-NatashaNeural">Edge TTS - Natasha (Australia Female)</option>
             </select>
           </div>
 

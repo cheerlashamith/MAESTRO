@@ -1,0 +1,366 @@
+/* Human-in-the-Loop Review Gate - Clean Modern White & Contrast Theme */
+
+.hitl-container {
+  margin: 1rem 0;
+  padding: 1.5rem;
+  border-radius: 12px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.hitl-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #DC2626, #2563EB, #10B981);
+}
+
+.hitl-header {
+  margin-bottom: 1.25rem;
+}
+
+.hitl-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  background: #FEF3C7;
+  border: 1px solid #FDE68A;
+  color: #B45309;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.65rem;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #D97706;
+  box-shadow: 0 0 8px rgba(217, 119, 6, 0.6);
+  animation: pulse-glow 1.5s infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+.hitl-title {
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0 0 0.4rem 0;
+}
+
+.hitl-subtitle {
+  font-size: 0.875rem;
+  color: #475569;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Tabs */
+.hitl-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #E2E8F0;
+  padding-bottom: 0.5rem;
+}
+
+.hitl-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #64748B;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hitl-tab-btn:hover {
+  color: #0F172A;
+  background: #F1F5F9;
+}
+
+.hitl-tab-btn.active {
+  color: #2563EB;
+  background: #EFF6FF;
+  border-color: #BFDBFE;
+}
+
+.hitl-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem 0.45rem;
+  border-radius: 10px;
+  background: #E2E8F0;
+  color: #475569;
+  font-size: 0.725rem;
+  font-weight: 700;
+}
+
+.hitl-tab-btn.active .hitl-tab-count {
+  background: #DBEAFE;
+  color: #1E40AF;
+}
+
+/* Script & Narration Review Box */
+.script-meta-bar {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  margin-bottom: 0.75rem;
+  font-size: 0.825rem;
+  color: #334155;
+  flex-wrap: wrap;
+}
+
+.meta-info {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.meta-info strong {
+  color: #0F172A;
+}
+
+.meta-hint {
+  margin-left: auto;
+  color: #2563EB;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 500;
+}
+
+.script-editor-wrapper {
+  position: relative;
+}
+
+.hitl-textarea {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 10px;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  color: #0F172A;
+  font-family: inherit;
+  font-size: 0.925rem;
+  line-height: 1.6;
+  resize: vertical;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.hitl-textarea:focus {
+  outline: none;
+  border-color: #2563EB;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* Scenes Grid */
+.scenes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.scene-card {
+  padding: 1rem;
+  border-radius: 10px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s ease;
+}
+
+.scene-card:hover {
+  border-color: #CBD5E1;
+}
+
+.scene-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.scene-index-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748B;
+  background: #E2E8F0;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+}
+
+.diagram-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: #EFF6FF;
+  color: #2563EB;
+  border: 1px solid #BFDBFE;
+}
+
+.scene-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0F172A;
+  margin: 0 0 0.5rem 0;
+}
+
+.scene-bullets {
+  margin: 0 0 0.5rem 1rem;
+  padding: 0;
+  font-size: 0.82rem;
+  color: #334155;
+}
+
+.scene-bullets li {
+  margin-bottom: 0.25rem;
+}
+
+.scene-narration-snippet {
+  font-size: 0.8rem;
+  color: #64748B;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Revision Drawer */
+.revision-drawer {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  border-radius: 10px;
+  background: #FAF5FF;
+  border: 1px solid #E9D5FF;
+}
+
+.revision-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.revision-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #6B21A8;
+}
+
+.revision-textarea {
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  background: #FFFFFF !important;
+  color: #0F172A !important;
+  border: 1px solid #D8B4FE !important;
+}
+
+.revision-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Footer Actions */
+.hitl-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-top: 1rem;
+  margin-top: 1rem;
+  border-top: 1px solid #E2E8F0;
+}
+
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hitl-btn-approve {
+  background: #059669 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #059669 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25) !important;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 1.3rem !important;
+  font-size: 0.9rem !important;
+  border-radius: 6px !important;
+  cursor: pointer;
+  transition: all 0.15s ease !important;
+}
+
+.hitl-btn-approve:hover {
+  background: #047857 !important;
+  box-shadow: 0 4px 10px rgba(5, 150, 105, 0.35) !important;
+}
+
+.hitl-btn-revise {
+  color: #7C3AED !important;
+  border: 1px solid #DDD6FE !important;
+  background: #F5F3FF !important;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem !important;
+  border-radius: 6px !important;
+  cursor: pointer;
+}
+
+.hitl-btn-revise:hover {
+  background: #EDE9FE !important;
+}
+
+.hitl-btn-cancel {
+  color: #DC2626 !important;
+  border: 1px solid #FECDD3 !important;
+  background: #FEF2F2 !important;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem !important;
+  border-radius: 6px !important;
+  cursor: pointer;
+}
+
+.hitl-btn-cancel:hover {
+  background: #FEE2E2 !important;
+}

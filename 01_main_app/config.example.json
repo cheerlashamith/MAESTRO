@@ -1,5 +1,6 @@
 {
-  "project_name": "AutoCourse Studio",
+  "project_name": "MAESTRO",
+  "project_full_name": "Multi-Agent Autonomous Engine for Scalable Transmedia Production & Orchestration",
   "host": "127.0.0.1",
   "port": 8765,
   "paths": {

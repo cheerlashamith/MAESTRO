@@ -21,13 +21,15 @@ from typing import Any, Dict, List, Optional
 from googleapiclient.http import MediaFileUpload
 
 from backend.core.config import project_root
-from backend.core.job_store import get_job, update_job
+from backend.core.job_store import update_job
 from backend.core.schemas import ScheduledUploadRecord
 from backend.services.youtube_auth import get_authenticated_service, is_authenticated
 
 QUEUE_FILE = project_root() / "data" / "scheduled_uploads.json"
-_LOCK = threading.Lock()
+_LOCK = threading.RLock()
 _SCHEDULER_STARTED = False
+
+POLL_INTERVAL_SECONDS = 20
 
 
 def _load_records() -> Dict[str, ScheduledUploadRecord]:
@@ -42,16 +44,77 @@ def _load_records() -> Dict[str, ScheduledUploadRecord]:
 
 
 def _save_records(records: Dict[str, ScheduledUploadRecord]) -> None:
+    """Write the queue atomically so a crash mid-write can't truncate it."""
     QUEUE_FILE.parent.mkdir(parents=True, exist_ok=True)
     payload = {k: v.model_dump() for k, v in records.items()}
-    QUEUE_FILE.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    tmp = QUEUE_FILE.with_suffix(f".json.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    os.replace(tmp, QUEUE_FILE)
+
+
+def _parse_schedule_time(value: str) -> Optional[datetime]:
+    """Parse an ISO 8601 schedule time, treating a naive value as UTC.
+
+    A naive timestamp used to raise inside the comparison below, so the item
+    silently never fired. Assuming UTC matches what the frontend sends.
+    """
+    try:
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def _claim_for_upload(schedule_id: str) -> Optional[ScheduledUploadRecord]:
+    """Atomically move a record from "scheduled" to "uploading".
+
+    Returns the claimed record, or None if another thread already claimed it.
+    Compare-and-set under one lock is what prevents the poll loop from starting
+    a second uploader for the same video while the first is still authenticating.
+    """
+    with _LOCK:
+        records = _load_records()
+        rec = records.get(schedule_id)
+        if rec is None or rec.status != "scheduled":
+            return None
+        rec_dict = rec.model_dump()
+        rec_dict.update(status="uploading", progress=5, message="Starting YouTube upload...")
+        claimed = ScheduledUploadRecord(**rec_dict)
+        records[schedule_id] = claimed
+        _save_records(records)
+        return claimed
+
+
+def recover_orphaned_uploads() -> int:
+    """Fail records stuck in "uploading" from a previous process.
+
+    They are marked failed rather than retried: the upload may well have reached
+    YouTube before the crash, and an automatic retry would publish twice.
+    """
+    with _LOCK:
+        records = _load_records()
+        orphans = [sid for sid, r in records.items() if r.status == "uploading"]
+        for sid in orphans:
+            rec_dict = records[sid].model_dump()
+            rec_dict.update(
+                status="failed",
+                message="Interrupted by a server restart",
+                error="Upload was interrupted. Check YouTube Studio before re-publishing "
+                      "— the video may have been uploaded already.",
+            )
+            records[sid] = ScheduledUploadRecord(**rec_dict)
+        if orphans:
+            _save_records(records)
+    if orphans:
+        print(f"[YouTubeScheduler] Recovered {len(orphans)} interrupted upload(s).")
+    return len(orphans)
 
 
 def schedule_upload(
     video_path: str,
     title: str,
     description: str,
-    tags: List[str] = [],
+    tags: Optional[List[str]] = None,
     category_id: str = "27",
     privacy_status: str = "private",
     schedule_time: Optional[str] = None,
@@ -73,7 +136,7 @@ def schedule_upload(
         video_path=str(Path(video_path).resolve()),
         title=title,
         description=description,
-        tags=tags,
+        tags=tags or [],
         category_id=category_id,
         privacy_status=privacy_status,
         schedule_time=schedule_time,
@@ -109,7 +172,7 @@ def list_scheduled() -> List[Dict[str, Any]]:
     with _LOCK:
         records = _load_records()
     items = list(records.values())
-    items.sort(key=lambda x: x.created_at, reverse=True)
+    items.sort(key=lambda x: x.created_at or "", reverse=True)
     return [item.model_dump() for item in items]
 
 
@@ -147,26 +210,44 @@ def _update_record(schedule_id: str, **kwargs) -> Optional[ScheduledUploadRecord
 
 
 def execute_upload(schedule_id: str) -> Dict[str, Any]:
-    """Perform resumable upload of a queued item to YouTube."""
-    rec = get_scheduled(schedule_id)
-    if not rec:
+    """Claim a queued item and upload it to YouTube."""
+    existing = get_scheduled(schedule_id)
+    if not existing:
         raise ValueError(f"Schedule record not found: {schedule_id}")
 
-    if rec.status == "completed":
-        return {"success": True, "video_id": rec.youtube_video_id, "url": rec.youtube_url}
+    if existing.status == "completed":
+        return {"success": True, "video_id": existing.youtube_video_id, "url": existing.youtube_url}
+
+    # Claim first, then validate. Claiming up front closes the window in which the
+    # poll loop could spawn a second uploader for this same record.
+    if _claim_for_upload(schedule_id) is None:
+        print(f"[YouTubeScheduler] {schedule_id} already claimed (status={existing.status}); skipping.")
+        return {
+            "success": False,
+            "skipped": True,
+            "message": f"Upload already in progress or finished (status={existing.status}).",
+        }
+
+    return _upload_claimed_record(schedule_id)
+
+
+def _upload_claimed_record(schedule_id: str) -> Dict[str, Any]:
+    """Perform the resumable upload for a record already claimed as "uploading"."""
+    rec = get_scheduled(schedule_id)
+    if rec is None:
+        raise ValueError(f"Schedule record disappeared: {schedule_id}")
 
     video_path = Path(rec.video_path)
     if not video_path.exists() or not video_path.is_file():
         err_msg = f"Video file not found: {video_path}"
-        _update_record(schedule_id, status="failed", error=err_msg, message="File not found")
+        _update_record(schedule_id, status="failed", progress=0, error=err_msg, message="File not found")
         raise FileNotFoundError(err_msg)
 
     if not is_authenticated():
         err_msg = "YouTube account is not connected. Connect channel first."
-        _update_record(schedule_id, status="failed", error=err_msg, message="OAuth not connected")
+        _update_record(schedule_id, status="failed", progress=0, error=err_msg, message="OAuth not connected")
         raise PermissionError(err_msg)
 
-    _update_record(schedule_id, status="uploading", progress=5, message="Starting YouTube upload...")
     if rec.job_id:
         try:
             update_job(rec.job_id, current_task="Uploading to YouTube (0%)")
@@ -280,38 +361,62 @@ def execute_upload(schedule_id: str) -> Dict[str, Any]:
         raise e
 
 
+def _due_schedule_ids() -> List[str]:
+    """IDs of records whose scheduled time has arrived, read under the lock."""
+    now_utc = datetime.now(timezone.utc)
+    due: List[str] = []
+    with _LOCK:
+        records = _load_records()
+    for schedule_id, rec in records.items():
+        if rec.status != "scheduled":
+            continue
+        if not rec.schedule_time:
+            due.append(schedule_id)  # Immediate upload that hasn't executed yet
+            continue
+        sched_dt = _parse_schedule_time(rec.schedule_time)
+        if sched_dt is None:
+            print(
+                f"[YouTubeScheduler] Unparseable schedule_time for {schedule_id}: "
+                f"{rec.schedule_time!r}. Uploading now so it isn't stranded."
+            )
+            due.append(schedule_id)
+        elif sched_dt <= now_utc:
+            due.append(schedule_id)
+    return due
+
+
+def _run_due_uploads() -> None:
+    """Claim and start every due upload. Exposed separately so it can be tested."""
+    for schedule_id in _due_schedule_ids():
+        # _claim_for_upload is the real gate; anything already claimed returns None.
+        claimed = _claim_for_upload(schedule_id)
+        if claimed is None:
+            continue
+        print(f"[YouTubeScheduler] Triggering scheduled upload {schedule_id} for '{claimed.title}'")
+        threading.Thread(
+            target=_execute_claimed, args=(schedule_id,), daemon=True,
+            name=f"YTUpload-{schedule_id}",
+        ).start()
+
+
+def _execute_claimed(schedule_id: str) -> None:
+    """Run an already-claimed upload, swallowing errors already recorded on it."""
+    try:
+        _upload_claimed_record(schedule_id)
+    except Exception as e:
+        print(f"[YouTubeScheduler] Upload thread for {schedule_id} ended: {e}")
+
+
 def _scheduler_loop():
     """Background polling loop for scheduled uploads."""
-    print("[YouTubeScheduler] Daemon started. Polling queue every 20 seconds...")
+    recover_orphaned_uploads()
+    print(f"[YouTubeScheduler] Daemon started. Polling queue every {POLL_INTERVAL_SECONDS} seconds...")
     while True:
         try:
-            records = _load_records()
-            now_utc = datetime.now(timezone.utc)
-
-            for schedule_id, rec in list(records.items()):
-                if rec.status == "scheduled":
-                    should_run = False
-                    if not rec.schedule_time:
-                        # Immediate upload that hasn't executed yet
-                        should_run = True
-                    else:
-                        try:
-                            # Parse ISO string
-                            sched_dt = datetime.fromisoformat(rec.schedule_time.replace("Z", "+00:00"))
-                            if sched_dt <= now_utc:
-                                should_run = True
-                        except Exception as dt_err:
-                            print(f"[YouTubeScheduler] Date parsing error for {schedule_id}: {dt_err}")
-
-                    if should_run:
-                        print(f"[YouTubeScheduler] Triggering scheduled upload {schedule_id} for '{rec.title}'")
-                        t = threading.Thread(target=execute_upload, args=(schedule_id,), daemon=True)
-                        t.start()
-
+            _run_due_uploads()
         except Exception as e:
             print(f"[YouTubeScheduler] Loop error: {e}")
-
-        time.sleep(20)
+        time.sleep(POLL_INTERVAL_SECONDS)
 
 
 def start_scheduler_daemon():

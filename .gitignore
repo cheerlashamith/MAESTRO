@@ -68,6 +68,10 @@ yarn-error.log*
 client_secret.json
 token.json
 
+01_main_app/engines/manim_course_mode/media/
+media/
+
 # OS Files
 .DS_Store
 Thumbs.db
+

@@ -6,3 +6,11 @@ requests>=2.31.0
 edge-tts>=6.1.0
 yt-dlp>=2024.04.13
 opencv-python>=4.8.0
+
+# System metrics for GET /api/admin/metrics
+psutil>=5.9.0
+
+# YouTube Data API v3 upload, OAuth 2.0 and analytics
+google-api-python-client>=2.100.0
+google-auth>=2.23.0
+google-auth-oauthlib>=1.1.0

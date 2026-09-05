@@ -4,13 +4,20 @@
   justify-content: center;
   min-height: 100vh;
   background-color: var(--bg-color);
-  background-image: radial-gradient(circle at center, rgba(67, 97, 238, 0.05) 0%, transparent 70%);
+  background-image: 
+    radial-gradient(circle at 50% 20%, rgba(37, 99, 235, 0.08) 0%, transparent 60%),
+    radial-gradient(circle at 80% 80%, rgba(124, 58, 237, 0.05) 0%, transparent 50%);
+  padding: 1.5rem;
 }
 
 .login-card {
   width: 100%;
-  max-width: 450px;
-  padding: var(--spacing-2xl);
+  max-width: 480px;
+  padding: 2.5rem 2rem;
+  background: #FFFFFF;
+  border: 1px solid var(--border-color);
+  border-radius: 1.25rem;
+  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.08), 0 1px 3px 0 rgba(0, 0, 0, 0.04);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -22,79 +29,122 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: var(--spacing-sm);
+  gap: 0.5rem;
 }
 
 .logo-icon-large {
-  width: 64px;
-  height: 64px;
-  background: linear-gradient(135deg, var(--primary-color), var(--accent-purple));
-  border-radius: var(--radius-xl);
+  width: 68px;
+  height: 68px;
+  background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 50%, #6366F1 100%);
+  border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: var(--spacing-sm);
-  box-shadow: var(--shadow-lg);
+  margin-bottom: 0.75rem;
+  box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.45), 0 8px 10px -6px rgba(99, 102, 241, 0.35);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  position: relative;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
 }
 
-.login-header h1 {
-  font-size: 1.8rem;
+.logo-icon-large:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 15px 30px -5px rgba(37, 99, 235, 0.55), 0 10px 15px -5px rgba(99, 102, 241, 0.45);
+}
+
+.login-title-maestro {
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-size: 2.2rem;
   font-weight: 700;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.01em;
+  color: var(--text-heading);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.login-subtitle-maestro {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  max-width: 400px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.login-portal-badge {
+  margin-top: 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.8rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  border-radius: 9999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  border: 1px solid var(--brand-border);
 }
 
 .login-options {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: 1rem;
 }
 
 .login-btn {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: var(--spacing-lg);
-  padding: var(--spacing-lg);
-  border: 2px solid var(--border-color);
+  gap: 1.25rem;
+  padding: 1.25rem;
+  border: 1.5px solid var(--border-color);
   border-radius: var(--radius-lg);
-  background-color: var(--card-bg);
-  transition: all 0.2s ease;
+  background-color: #FFFFFF;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
 }
 
 .login-btn:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 8px 16px -4px rgba(15, 23, 42, 0.08);
 }
 
 .user-btn:hover {
-  border-color: var(--primary-color);
-  background-color: rgba(67, 97, 238, 0.05);
+  border-color: var(--brand);
+  background-color: #F8FAFC;
 }
 
 .user-btn .btn-icon {
-  background-color: rgba(67, 97, 238, 0.1);
-  color: var(--primary-color);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(30, 64, 175, 0.06));
+  color: var(--brand);
+  border: 1px solid rgba(37, 99, 235, 0.2);
 }
 
 .admin-btn:hover {
-  border-color: var(--accent-purple);
-  background-color: rgba(114, 9, 183, 0.05);
+  border-color: #7C3AED;
+  background-color: #FAF5FF;
 }
 
 .admin-btn .btn-icon {
-  background-color: rgba(114, 9, 183, 0.1);
-  color: var(--accent-purple);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.12), rgba(99, 102, 241, 0.06));
+  color: #7C3AED;
+  border: 1px solid rgba(124, 58, 237, 0.2);
 }
 
 .btn-icon {
   width: 48px;
   height: 48px;
-  border-radius: 50%;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.login-btn:hover .btn-icon {
+  transform: scale(1.08);
 }
 
 .btn-text {
@@ -102,13 +152,37 @@
 }
 
 .btn-text h3 {
-  font-size: 1.1rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 1.02rem;
   font-weight: 600;
-  color: var(--text-color);
-  margin-bottom: 0.25rem;
+  color: var(--text-heading);
+  margin-bottom: 0.2rem;
 }
 
 .btn-text p {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--text-muted);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.account-tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.18rem 0.55rem;
+  border-radius: 6px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.account-tag.creator {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #BFDBFE;
+}
+
+.account-tag.admin {
+  background: #F3E8FF;
+  color: #6D28D9;
+  border: 1px solid #DDD6FE;
 }

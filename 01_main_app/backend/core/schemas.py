@@ -19,6 +19,7 @@ class VisualStyle(str, Enum):
 class JobStatus(str, Enum):
     queued = "queued"
     planning = "planning"
+    awaiting_approval = "awaiting_approval"
     rendering = "rendering"
     assembling = "assembling"
     completed = "completed"
@@ -34,6 +35,12 @@ class TaskType(str, Enum):
     SYLLABUS = "syllabus"
     ENRICHMENT = "enrichment"
 
+class ApprovalActionRequest(BaseModel):
+    action: str = "approve"  # "approve" | "reject" | "revise"
+    script_override: Optional[str] = None
+    feedback: Optional[str] = None
+    scenes_override: Optional[List[Dict[str, Any]]] = None
+
 class GenerateRequest(BaseModel):
     mode: Mode
     topic: str = Field(default="", min_length=0)
@@ -44,6 +51,8 @@ class GenerateRequest(BaseModel):
     script_override: Optional[str] = None
     keywords_override: Optional[str] = None
     notes: Optional[str] = None
+    # Human-in-the-loop toggle
+    require_approval: bool = True
     # Optional rendering preferences
     aspect: Optional[str] = None  # "16:9" or "9:16"
     voice: Optional[str] = None
@@ -61,6 +70,9 @@ class GenerateRequest(BaseModel):
     publish_tags: Optional[List[str]] = None
     publish_category_id: Optional[str] = "27"  # Default 27 (Education)
     publish_thumbnail_path: Optional[str] = None
+    # Multi-tenant & User Scoping
+    user_id: Optional[str] = "shamith"
+    tenant_id: Optional[str] = "default"
 
 class YouTubeOptimizeRequest(BaseModel):
     topic: str
@@ -127,3 +139,5 @@ class JobRecord(BaseModel):
     uploaded_at: Optional[str] = None
     youtube_url: Optional[str] = None
     scheduled_upload_id: Optional[str] = None
+    user_id: str = "shamith"
+    tenant_id: str = "default"

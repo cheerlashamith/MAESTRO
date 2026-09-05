@@ -6,12 +6,27 @@ from backend.core.config import get_config
 from backend.services.models.base_plugin import AIModelPlugin
 
 
+DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
+DEFAULT_TEMPERATURE = 0.3
+
+
+def configured_openai_model() -> str:
+    """The model from providers.openai_model, falling back to gpt-4o-mini.
+
+    Shared with BrainManager so its routing matches whatever this plugin reports.
+    """
+    value = get_config().get("providers", {}).get("openai_model")
+    return str(value).strip() if value else DEFAULT_OPENAI_MODEL
+
+
 class OpenAIGpt4oMiniPlugin(AIModelPlugin):
     """
-    Ultra-low cost OpenAI gpt-4o-mini plugin with token conservation.
+    Ultra-low cost OpenAI plugin with token conservation.
+
+    Defaults to gpt-4o-mini; set providers.openai_model to use another model.
     """
     def model_name(self) -> str:
-        return "gpt-4o-mini"
+        return configured_openai_model()
 
     def supports_task(self, task: TaskType) -> bool:
         return True  # High precision, supports all pipeline tasks
@@ -37,9 +52,14 @@ class OpenAIGpt4oMiniPlugin(AIModelPlugin):
             "Content-Type": "application/json"
         }
 
+        try:
+            temperature = float(cfg.get("openai_temperature", DEFAULT_TEMPERATURE))
+        except (TypeError, ValueError):
+            temperature = DEFAULT_TEMPERATURE
+
         # Token conservation prompt instruction
         payload = {
-            "model": "gpt-4o-mini",
+            "model": configured_openai_model(),
             "messages": [
                 {
                     "role": "system",
@@ -47,7 +67,7 @@ class OpenAIGpt4oMiniPlugin(AIModelPlugin):
                 },
                 {"role": "user", "content": prompt}
             ],
-            "temperature": 0.3
+            "temperature": temperature
         }
 
         try:

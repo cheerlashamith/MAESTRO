@@ -77,68 +77,15 @@ interface JobSummary {
   youtube_video_id?: string;
 }
 
-const DEMO_CHANNEL: ChannelProfile = {
-  id: 'UC_MAESTRO_PRODUCTION',
-  title: 'Maestro AI Media & Academy',
-  custom_url: '@MaestroMediaAI',
-  description: 'Autonomous multi-agent transmedia production & AI course channel.',
-  avatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
-  subscriber_count: 38400,
-  video_count: 24,
-  view_count: 512900
-};
-
-const DEMO_PUBLISHED: PublishedVideo[] = [
-  {
-    job_id: 'b6bd739a3c60',
-    video_id: 'aircAruvnKk',
-    title: 'Distributed Consensus and Raft Protocol Explained in 4K',
-    topic: 'Distributed Systems & Raft Algorithm',
-    description: 'Autonomous Manim visualization of Raft leader election, log replication, and Byzantine fault tolerance.',
-    thumbnail_url: 'https://img.youtube.com/vi/aircAruvnKk/mqdefault.jpg',
-    views: 48200,
-    likes: 3410,
-    comments: 298,
-    published_at: '2026-09-04T12:00:00Z',
-    watch_url: 'https://www.youtube.com/watch?v=aircAruvnKk'
-  },
-  {
-    job_id: '5275140ae4ee',
-    video_id: 'bBC-nXj3Ng4',
-    title: 'Neural Audio Synthesis & Waveform Harmonics',
-    topic: 'Audio Waveforms and Neural TTS',
-    description: 'Deep dive into text-to-speech vocoders and spectral synthesis with real-time waveform inspection.',
-    thumbnail_url: 'https://img.youtube.com/vi/bBC-nXj3Ng4/mqdefault.jpg',
-    views: 31500,
-    likes: 2190,
-    comments: 184,
-    published_at: '2026-09-02T15:30:00Z',
-    watch_url: 'https://www.youtube.com/watch?v=bBC-nXj3Ng4'
-  },
-  {
-    job_id: '486269cdf49a',
-    video_id: 'IHZwWFHWa-w',
-    title: 'Graph Neural Networks & Topological Manifolds',
-    topic: 'Graph Algorithms and Manifolds',
-    description: 'Manim mathematical animations exploring non-Euclidean data representation and node embeddings.',
-    thumbnail_url: 'https://img.youtube.com/vi/IHZwWFHWa-w/mqdefault.jpg',
-    views: 74100,
-    likes: 5820,
-    comments: 492,
-    published_at: '2026-08-29T18:00:00Z',
-    watch_url: 'https://www.youtube.com/watch?v=IHZwWFHWa-w'
-  }
-];
-
 export default function YouTubePublisher() {
-  const [channel, setChannel] = useState<ChannelProfile | null>(DEMO_CHANNEL);
-  const [connected, setConnected] = useState<boolean>(true);
+  const [channel, setChannel] = useState<ChannelProfile | null>(null);
+  const [connected, setConnected] = useState<boolean>(false);
   const [, setLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'queue' | 'published' | 'rules'>('queue');
 
   // Queue & Published data
   const [queue, setQueue] = useState<ScheduledItem[]>([]);
-  const [published, setPublished] = useState<PublishedVideo[]>(DEMO_PUBLISHED);
+  const [published, setPublished] = useState<PublishedVideo[]>([]);
   const [completedJobs, setCompletedJobs] = useState<JobSummary[]>([]);
 
   // Publish / Schedule Modal State
@@ -190,12 +137,12 @@ export default function YouTubePublisher() {
           setConnected(true);
           setChannel(statusData.channel);
         } else {
-          setConnected(true);
-          setChannel(DEMO_CHANNEL);
+          setConnected(false);
+          setChannel(null);
         }
       } catch {
-        setConnected(true);
-        setChannel(DEMO_CHANNEL);
+        setConnected(false);
+        setChannel(null);
       }
 
       // 2. Queue
@@ -212,10 +159,10 @@ export default function YouTubePublisher() {
         if (analyticsData.analytics && analyticsData.analytics.length > 0) {
           setPublished(analyticsData.analytics);
         } else {
-          setPublished(DEMO_PUBLISHED);
+          setPublished([]);
         }
       } catch {
-        setPublished(DEMO_PUBLISHED);
+        setPublished([]);
       }
 
       // 4. Completed Jobs for modal selector (scoped to current user)

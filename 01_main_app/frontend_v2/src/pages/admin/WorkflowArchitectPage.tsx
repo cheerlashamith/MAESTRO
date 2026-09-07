@@ -869,9 +869,10 @@ export default function WorkflowArchitectPage() {
                   <div className="form-group-wrap">
                     <label>AI Model Provider</label>
                     <select className="input-field" defaultValue={selectedNode.config.model || 'qwen2.5:7b'} id="cfg-model">
-                      <option value="qwen2.5:7b">Qwen 2.5:7B (Ollama Local)</option>
-                      <option value="llama3:latest">Llama 3 (Ollama Local)</option>
-                      <option value="gpt-4o">OpenAI GPT-4o</option>
+                      <option value="qwen2.5:7b">Qwen 2.5:7B (Ollama Local - 100% Free, Zero Trace)</option>
+                      <option value="llama3:latest">Llama 3 (Ollama Local - 100% Free, Zero Trace)</option>
+                      <option value="gpt-4o-mini">OpenAI GPT-4o-Mini (Ultra-low cost, fractions of a cent)</option>
+                      <option value="gpt-4o">OpenAI GPT-4o (Frontier Model)</option>
                       <option value="gemini-2.0-flash">Google Gemini 2.0 Flash</option>
                     </select>
                   </div>

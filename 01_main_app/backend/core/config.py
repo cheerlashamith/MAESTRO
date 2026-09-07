@@ -44,6 +44,18 @@ def is_secret_key(key: str) -> bool:
 
 @lru_cache(maxsize=1)
 def _build_config() -> dict:
+    # Safely load local .env files if present (never committed to git)
+    for env_path in (ROOT / ".env", ROOT.parent / ".env"):
+        if env_path.exists():
+            try:
+                for line in env_path.read_text(encoding="utf-8").splitlines():
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        os.environ.setdefault(k.strip(), v.strip())
+            except Exception:
+                pass
+
     path = CONFIG_PATH if CONFIG_PATH.exists() else EXAMPLE_PATH
     cfg = json.loads(path.read_text(encoding="utf-8"))
 

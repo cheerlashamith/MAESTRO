@@ -719,9 +719,61 @@ export default function WorkflowArchitectPage() {
                       {index < activeWorkflow.nodes.length - 1 && (
                         <div className="flow-connector-line">
                           <div className="connector-dashed-svg">
-                            <svg width="24" height="42" viewBox="0 0 24 42">
-                              <line x1="12" y1="0" x2="12" y2="34" stroke="#94A3B8" strokeWidth="2" strokeDasharray="3,3" />
-                              <polygon points="8,32 16,32 12,40" fill="#94A3B8" />
+                            <svg width="28" height="46" viewBox="0 0 28 46" className={`workflow-arrow-svg ${isExecuting ? 'flow-executing' : ''}`}>
+                              <defs>
+                                <linearGradient id={`flowGrad-${index}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                                  <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.75" />
+                                  <stop offset="100%" stopColor="#5227c7" stopOpacity="1" />
+                                </linearGradient>
+                                <filter id={`flowGlow-${index}`} x="-50%" y="-50%" width="200%" height="200%">
+                                  <feGaussianBlur stdDeviation="1.5" result="blur" />
+                                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                </filter>
+                              </defs>
+
+                              {/* Subtle track guide line */}
+                              <line 
+                                x1="14" y1="0" 
+                                x2="14" y2="36" 
+                                stroke="#CBD5E1" 
+                                strokeWidth="1.5" 
+                                strokeOpacity="0.45"
+                              />
+
+                              {/* Continuous downward moving dashed flow line */}
+                              <line 
+                                x1="14" y1="0" 
+                                x2="14" y2="36" 
+                                stroke={isExecuting ? '#ff6d34' : `url(#flowGrad-${index})`}
+                                strokeWidth="2.5" 
+                                strokeDasharray="4 4" 
+                                strokeLinecap="round"
+                                className="animated-flow-line" 
+                              />
+
+                              {/* Traveling pulse dot 1 */}
+                              <circle 
+                                cx="14" cy="0" 
+                                r="2.5" 
+                                fill={isExecuting ? '#ff6d34' : '#ff6d34'}
+                                filter={`url(#flowGlow-${index})`}
+                                className="animated-flow-dot dot-primary"
+                              />
+
+                              {/* Traveling pulse dot 2 (interleaved flow) */}
+                              <circle 
+                                cx="14" cy="0" 
+                                r="2" 
+                                fill={isExecuting ? '#ff6d34' : '#7c3aed'}
+                                className="animated-flow-dot dot-secondary"
+                              />
+
+                              {/* Directional arrowhead */}
+                              <polygon 
+                                points="9,34 19,34 14,42" 
+                                fill={isExecuting ? '#ff6d34' : '#5227c7'}
+                                className="animated-arrow-head"
+                              />
                             </svg>
                           </div>
                         </div>

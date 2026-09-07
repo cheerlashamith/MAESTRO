@@ -20,12 +20,13 @@ import PluginManager from './pages/admin/PluginManager';
 import JobManager from './pages/admin/JobManager';
 import CacheManager from './pages/admin/CacheManager';
 import Analytics from './pages/admin/Analytics';
+import LandingPage from './pages/LandingPage';
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         
         {/* User Portal Routes */}

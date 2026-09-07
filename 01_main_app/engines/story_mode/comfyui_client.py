@@ -40,10 +40,16 @@ class ComfyUIClient:
             return
         except Exception:
             pass
-        from backend.core.config import get_config
-        import os, subprocess, time
-        cfg = get_config()
-        root = cfg.get("paths", {}).get("comfyui_root")
+        import os, subprocess, time, sys
+        p = str(Path(__file__).resolve().parent.parent.parent)
+        if p not in sys.path:
+            sys.path.insert(0, p)
+        try:
+            from backend.core.config import get_config
+            cfg = get_config()
+            root = cfg.get("paths", {}).get("comfyui_root")
+        except Exception:
+            root = None
         if not root: raise RuntimeError("ComfyUI is not running and comfyui_root is not configured.")
         root = Path(root)
         bat = root / "run_nvidia_gpu.bat"

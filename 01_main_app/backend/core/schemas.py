@@ -73,6 +73,14 @@ class GenerateRequest(BaseModel):
     # Multi-tenant & User Scoping
     user_id: Optional[str] = "shamith"
     tenant_id: Optional[str] = "default"
+    # Dynamic Workflow Node Overrides (Zero-Hardcode Engine)
+    model_override: Optional[str] = None
+    temperature_override: Optional[float] = None
+    system_prompt_override: Optional[str] = None
+    voice_rate: Optional[str] = None
+    voice_volume: Optional[str] = None
+    workflow_id: Optional[str] = None
+    node_overrides: Optional[Dict[str, Any]] = None
 
 class YouTubeOptimizeRequest(BaseModel):
     topic: str

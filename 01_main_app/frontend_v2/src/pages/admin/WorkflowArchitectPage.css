@@ -593,18 +593,103 @@
   background: #EF4444;
 }
 
-/* Connector Line */
+/* Animated Flow Connector Line & Moving Dots */
 .flow-connector-line {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 42px;
+  height: 46px;
+  position: relative;
+  z-index: 2;
+  margin: -1px 0;
 }
 
 .connector-dashed-svg {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.workflow-arrow-svg {
+  overflow: visible;
+}
+
+/* Continuous downward marching dots */
+.animated-flow-line {
+  animation: flowDashesDown 0.85s linear infinite;
+  transition: stroke 0.3s ease;
+}
+
+@keyframes flowDashesDown {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+
+/* Traveling pulse dots moving continuously from top node to bottom node */
+.animated-flow-dot {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.animated-flow-dot.dot-primary {
+  animation: flowDotTravel 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animated-flow-dot.dot-secondary {
+  animation: flowDotTravel 1.6s cubic-bezier(0.4, 0, 0.2, 1) 0.8s infinite;
+}
+
+@keyframes flowDotTravel {
+  0% {
+    cy: 0;
+    opacity: 0;
+    r: 1.5;
+  }
+  15% {
+    opacity: 0.95;
+    r: 3;
+  }
+  80% {
+    opacity: 0.9;
+    r: 2.5;
+  }
+  100% {
+    cy: 35;
+    opacity: 0;
+    r: 1;
+  }
+}
+
+/* Arrowhead with subtle pulse */
+.animated-arrow-head {
+  filter: drop-shadow(0 2px 5px rgba(82, 39, 199, 0.3));
+  transition: fill 0.3s ease, transform 0.3s ease;
+}
+
+.connector-dashed-svg:hover .animated-flow-line {
+  stroke-width: 3.5;
+  filter: drop-shadow(0 0 5px rgba(82, 39, 199, 0.45));
+}
+
+/* When pipeline is executing, faster animation and energetic orange glow */
+.workflow-arrow-svg.flow-executing .animated-flow-line {
+  animation: flowDashesDown 0.4s linear infinite;
+  stroke: #ff6d34 !important;
+}
+
+.workflow-arrow-svg.flow-executing .animated-flow-dot {
+  animation-duration: 0.8s;
+  fill: #ff6d34 !important;
+}
+
+.workflow-arrow-svg.flow-executing .animated-arrow-head {
+  fill: #ff6d34 !important;
+  filter: drop-shadow(0 0 8px rgba(255, 109, 52, 0.7));
 }
 
 /* Floating Controls */

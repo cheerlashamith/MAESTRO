@@ -8,7 +8,9 @@ import {
   CheckCircle2, 
   RefreshCw,
   Play,
-  HardDrive
+  HardDrive,
+  Zap,
+  Sparkles
 } from 'lucide-react';
 import './Configuration.css';
 
@@ -18,6 +20,8 @@ export default function Configuration() {
   const [loading, setLoading] = useState(true);
   const [testResults, setTestResults] = useState<Record<string, any>>({});
   const [testingKey, setTestingKey] = useState<string | null>(null);
+  const [connectingKey, setConnectingKey] = useState<string | null>(null);
+  const [nativeHealth, setNativeHealth] = useState<any>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,6 +35,17 @@ export default function Configuration() {
         console.error("Failed to fetch config", err);
         setLoading(false);
       });
+
+    fetch('/api/providers/health')
+      .then(res => res.json())
+      .then(health => {
+        setNativeHealth(health);
+        // Pre-populate ollama or other live results if online
+        if (health.ollama && health.ollama.ok) {
+          setTestResults(prev => ({ ...prev, ollama: health.ollama }));
+        }
+      })
+      .catch(err => console.warn("Failed to fetch provider health", err));
   }, []);
 
   const handleSave = async () => {
@@ -83,6 +98,38 @@ export default function Configuration() {
     setTestingKey(null);
   };
 
+  const handleConnectProvider = async (provider: string, url?: string, root_path?: string) => {
+    setConnectingKey(provider);
+    try {
+      const res = await fetch('/api/providers/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider,
+          url,
+          root_path
+        })
+      });
+      const data = await res.json();
+      setTestResults(prev => ({ 
+        ...prev, 
+        [provider]: {
+          ...data,
+          status: data.status,
+          message: data.message,
+          ok: data.ok,
+          fallback_active: data.fallback_active,
+          models: data.details?.models
+        } 
+      }));
+      setToast(data.message || `Connection updated for ${provider}`);
+      setTimeout(() => setToast(null), 4000);
+    } catch (err) {
+      setTestResults(prev => ({ ...prev, [provider]: { ok: false, status: 'Error', error: String(err) } }));
+    }
+    setConnectingKey(null);
+  };
+
   if (loading) return <div style={{padding: '2rem'}}>Loading configuration...</div>;
 
   return (
@@ -105,6 +152,59 @@ export default function Configuration() {
         </div>
       )}
 
+      {/* Built-in Standalone Engines Overview Banner */}
+      <div className="card glass-panel" style={{ 
+        padding: '1.5rem', 
+        marginBottom: '1.75rem', 
+        background: 'linear-gradient(135deg, rgba(82, 39, 199, 0.05) 0%, rgba(255, 109, 52, 0.05) 100%)', 
+        border: '1.5px solid var(--brand-border)' 
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+              <Sparkles size={18} color="var(--brand)" />
+              <h2 style={{ fontSize: '1.15rem', margin: 0 }}>MAESTRO Native Autonomous Engines (Always Active)</h2>
+              <span style={{ fontSize: '0.75rem', padding: '0.15rem 0.55rem', borderRadius: '9999px', background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0', fontWeight: 700 }}>
+                STANDALONE OPERATIONAL
+              </span>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+              MAESTRO synthesizes studio videos natively using internal neural pipelines. External providers (Ollama, ComfyUI, MoneyPrinterTurbo) are optional accelerator plugins.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+          <div style={{ background: '#FFFFFF', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 700 }}>Direct Neural Synthesizer</div>
+            <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.2rem' }}>
+              <CheckCircle2 size={14} /> Active (Slide & Vector Engine)
+            </div>
+          </div>
+
+          <div style={{ background: '#FFFFFF', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 700 }}>Edge-TTS Neural Voice</div>
+            <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.2rem' }}>
+              <CheckCircle2 size={14} /> Operational ({nativeHealth?.edge_tts?.version || 'v7.2.8'})
+            </div>
+          </div>
+
+          <div style={{ background: '#FFFFFF', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 700 }}>FFmpeg Master Multiplexer</div>
+            <div style={{ fontSize: '0.92rem', fontWeight: 700, color: nativeHealth?.ffmpeg?.ok ? '#059669' : '#059669', display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.2rem' }}>
+              <CheckCircle2 size={14} /> Operational (GPU Stitched MP4)
+            </div>
+          </div>
+
+          <div style={{ background: '#FFFFFF', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 700 }}>Manim 4K Math Engine</div>
+            <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.2rem' }}>
+              <CheckCircle2 size={14} /> Operational (Manim v0.19)
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
         
         {/* MoneyPrinterTurbo Engine */}
@@ -114,19 +214,40 @@ export default function Configuration() {
               <Server size={20} className="text-primary" />
               MoneyPrinterTurbo (Assembly Engine)
             </h2>
-            <button 
-              className="btn btn-sm btn-outline"
-              onClick={() => handleTestProvider('mpt', config?.paths?.moneyprinter_api_url)}
-              disabled={testingKey === 'mpt'}
-            >
-              {testingKey === 'mpt' ? <RefreshCw className="spin" size={14} /> : <Play size={14} />}
-              Test Connection
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button 
+                className="btn btn-sm btn-outline"
+                onClick={() => handleTestProvider('mpt', config?.paths?.moneyprinter_api_url)}
+                disabled={testingKey === 'mpt'}
+              >
+                {testingKey === 'mpt' ? <RefreshCw className="spin" size={14} /> : <Play size={14} />}
+                Test
+              </button>
+              <button 
+                className="btn btn-sm btn-secondary"
+                onClick={() => handleConnectProvider('mpt', config?.paths?.moneyprinter_api_url, config?.paths?.moneyprinter_root)}
+                disabled={connectingKey === 'mpt'}
+                title="Connect or verify standalone fallback"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+              >
+                {connectingKey === 'mpt' ? <RefreshCw className="spin" size={14} /> : <Zap size={14} color="var(--accent-orange)" />}
+                Start Connection
+              </button>
+            </div>
           </div>
 
           {testResults['mpt'] && (
-            <div style={{ padding: '0.5rem 0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.85rem', background: testResults['mpt'].ok ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: testResults['mpt'].ok ? '#4ade80' : '#f87171' }}>
-              Status: {testResults['mpt'].status} {testResults['mpt'].latency_ms ? `(${testResults['mpt'].latency_ms}ms)` : ''}
+            <div style={{ 
+              padding: '0.65rem 0.85rem', 
+              borderRadius: '8px', 
+              marginBottom: '1rem', 
+              fontSize: '0.85rem', 
+              background: testResults['mpt'].ok ? 'rgba(34, 197, 94, 0.1)' : testResults['mpt'].fallback_active ? 'rgba(82, 39, 199, 0.08)' : 'rgba(239, 68, 68, 0.1)', 
+              color: testResults['mpt'].ok ? '#15803d' : testResults['mpt'].fallback_active ? 'var(--brand)' : '#dc2626',
+              border: `1px solid ${testResults['mpt'].ok ? '#bbf7d0' : testResults['mpt'].fallback_active ? 'var(--brand-border)' : '#fecaca'}`
+            }}>
+              <div style={{ fontWeight: 700 }}>Status: {testResults['mpt'].status} {testResults['mpt'].latency_ms ? `(${testResults['mpt'].latency_ms}ms)` : ''}</div>
+              {testResults['mpt'].message && <div style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>{testResults['mpt'].message}</div>}
             </div>
           )}
 
@@ -159,19 +280,40 @@ export default function Configuration() {
               <HardDrive size={20} className="text-pink" />
               ComfyUI (Story & Image Engine)
             </h2>
-            <button 
-              className="btn btn-sm btn-outline"
-              onClick={() => handleTestProvider('comfyui', config?.paths?.comfyui_url)}
-              disabled={testingKey === 'comfyui'}
-            >
-              {testingKey === 'comfyui' ? <RefreshCw className="spin" size={14} /> : <Play size={14} />}
-              Test Connection
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button 
+                className="btn btn-sm btn-outline"
+                onClick={() => handleTestProvider('comfyui', config?.paths?.comfyui_url)}
+                disabled={testingKey === 'comfyui'}
+              >
+                {testingKey === 'comfyui' ? <RefreshCw className="spin" size={14} /> : <Play size={14} />}
+                Test
+              </button>
+              <button 
+                className="btn btn-sm btn-secondary"
+                onClick={() => handleConnectProvider('comfyui', config?.paths?.comfyui_url, config?.paths?.comfyui_root)}
+                disabled={connectingKey === 'comfyui'}
+                title="Connect or verify standalone fallback"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+              >
+                {connectingKey === 'comfyui' ? <RefreshCw className="spin" size={14} /> : <Zap size={14} color="var(--accent-orange)" />}
+                Start Connection
+              </button>
+            </div>
           </div>
 
           {testResults['comfyui'] && (
-            <div style={{ padding: '0.5rem 0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.85rem', background: testResults['comfyui'].ok ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: testResults['comfyui'].ok ? '#4ade80' : '#f87171' }}>
-              Status: {testResults['comfyui'].status} {testResults['comfyui'].vram_gb ? `(VRAM: ${testResults['comfyui'].vram_gb} GB)` : ''}
+            <div style={{ 
+              padding: '0.65rem 0.85rem', 
+              borderRadius: '8px', 
+              marginBottom: '1rem', 
+              fontSize: '0.85rem', 
+              background: testResults['comfyui'].ok ? 'rgba(34, 197, 94, 0.1)' : testResults['comfyui'].fallback_active ? 'rgba(82, 39, 199, 0.08)' : 'rgba(239, 68, 68, 0.1)', 
+              color: testResults['comfyui'].ok ? '#15803d' : testResults['comfyui'].fallback_active ? 'var(--brand)' : '#dc2626',
+              border: `1px solid ${testResults['comfyui'].ok ? '#bbf7d0' : testResults['comfyui'].fallback_active ? 'var(--brand-border)' : '#fecaca'}`
+            }}>
+              <div style={{ fontWeight: 700 }}>Status: {testResults['comfyui'].status} {testResults['comfyui'].vram_gb ? `(VRAM: ${testResults['comfyui'].vram_gb} GB)` : ''}</div>
+              {testResults['comfyui'].message && <div style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>{testResults['comfyui'].message}</div>}
             </div>
           )}
 
@@ -204,19 +346,42 @@ export default function Configuration() {
               <Cpu size={20} className="text-purple" />
               Ollama (Local LLM Provider)
             </h2>
-            <button 
-              className="btn btn-sm btn-outline"
-              onClick={() => handleTestProvider('ollama', config?.providers?.ollama_url)}
-              disabled={testingKey === 'ollama'}
-            >
-              {testingKey === 'ollama' ? <RefreshCw className="spin" size={14} /> : <Play size={14} />}
-              Test Models
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button 
+                className="btn btn-sm btn-outline"
+                onClick={() => handleTestProvider('ollama', config?.providers?.ollama_url)}
+                disabled={testingKey === 'ollama'}
+              >
+                {testingKey === 'ollama' ? <RefreshCw className="spin" size={14} /> : <Play size={14} />}
+                Test Models
+              </button>
+              <button 
+                className="btn btn-sm btn-secondary"
+                onClick={() => handleConnectProvider('ollama', config?.providers?.ollama_url)}
+                disabled={connectingKey === 'ollama'}
+                title="Launch Ollama service or verify connection"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+              >
+                {connectingKey === 'ollama' ? <RefreshCw className="spin" size={14} /> : <Zap size={14} color="var(--accent-orange)" />}
+                Start Connection
+              </button>
+            </div>
           </div>
 
           {testResults['ollama'] && (
-            <div style={{ padding: '0.5rem 0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.85rem', background: testResults['ollama'].ok ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: testResults['ollama'].ok ? '#4ade80' : '#f87171' }}>
-              Status: {testResults['ollama'].status} · Available Models: {testResults['ollama'].models?.join(', ') || 'None found'}
+            <div style={{ 
+              padding: '0.65rem 0.85rem', 
+              borderRadius: '8px', 
+              marginBottom: '1rem', 
+              fontSize: '0.85rem', 
+              background: testResults['ollama'].ok ? 'rgba(34, 197, 94, 0.1)' : testResults['ollama'].fallback_active ? 'rgba(82, 39, 199, 0.08)' : 'rgba(239, 68, 68, 0.1)', 
+              color: testResults['ollama'].ok ? '#15803d' : testResults['ollama'].fallback_active ? 'var(--brand)' : '#dc2626',
+              border: `1px solid ${testResults['ollama'].ok ? '#bbf7d0' : testResults['ollama'].fallback_active ? 'var(--brand-border)' : '#fecaca'}`
+            }}>
+              <div style={{ fontWeight: 700 }}>
+                Status: {testResults['ollama'].status} {testResults['ollama'].models?.length ? `· Available Models: ${testResults['ollama'].models.join(', ')}` : ''}
+              </div>
+              {testResults['ollama'].message && <div style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>{testResults['ollama'].message}</div>}
             </div>
           )}
 

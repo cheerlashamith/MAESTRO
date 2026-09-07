@@ -74,7 +74,7 @@ class BrainManager:
         return [p for p in cls._plugins if p.supports_task(task_type)]
 
     @classmethod
-    def ask(cls, prompt: str, task_type: TaskType, timeout: int = None, prompt_version: str = None, system_prompt_version: str = None) -> str:
+    def ask(cls, prompt: str, task_type: TaskType, timeout: int = None, prompt_version: str = None, system_prompt_version: str = None, preferred_model: str = None) -> str:
         cfg = get_config().get("brain_manager", {})
         timeout = timeout or cfg.get("timeout_seconds", 900)
         prompt_version = prompt_version or cfg.get("prompt_version", "1.0")
@@ -88,24 +88,31 @@ class BrainManager:
         default_llm = cfg.get("default_llm", "ollama").lower()
         preferred = []
 
-        if default_llm in ["openai", "gpt-4o-mini"]:
-            # Match whatever providers.openai_model resolves to, not a literal,
-            # so setting a different OpenAI model still routes to that plugin.
-            from backend.services.models.openai_gpt4o_mini import configured_openai_model
-            target = configured_openai_model()
-            preferred = [p for p in capable_plugins if p.model_name() == target]
-        elif task_type in [TaskType.PLANNING, TaskType.STORY, TaskType.SYLLABUS]:
-            target = cfg.get("planner_model", "qwen2.5:7b")
-            preferred = [p for p in capable_plugins if p.model_name() == target]
-        elif task_type == TaskType.CODE:
-            target = cfg.get("coding_model", "qwen2.5:7b")
-            if len(prompt) > 2500:
-                target = cfg.get("planner_model", "qwen2.5:7b") # Large code -> planner
-            preferred = [p for p in cls._plugins if p.model_name() == target]
-            capable_plugins = _dedupe(capable_plugins + preferred)
-        elif task_type in [TaskType.KEYWORDS, TaskType.CLASSIFY, TaskType.ENRICHMENT]:
-            target = cfg.get("utility_model", "gemma3:4b")
-            preferred = [p for p in capable_plugins if p.model_name() == target]
+        # If a specific workflow node configured a preferred model, prioritize it directly!
+        if preferred_model:
+            model_matches = [p for p in capable_plugins if p.model_name() == preferred_model or preferred_model in p.model_name()]
+            if model_matches:
+                preferred = model_matches
+
+        if not preferred:
+            if default_llm in ["openai", "gpt-4o-mini"]:
+                # Match whatever providers.openai_model resolves to, not a literal,
+                # so setting a different OpenAI model still routes to that plugin.
+                from backend.services.models.openai_gpt4o_mini import configured_openai_model
+                target = configured_openai_model()
+                preferred = [p for p in capable_plugins if p.model_name() == target]
+            elif task_type in [TaskType.PLANNING, TaskType.STORY, TaskType.SYLLABUS]:
+                target = cfg.get("planner_model", "qwen2.5:7b")
+                preferred = [p for p in capable_plugins if p.model_name() == target]
+            elif task_type == TaskType.CODE:
+                target = cfg.get("coding_model", "qwen2.5:7b")
+                if len(prompt) > 2500:
+                    target = cfg.get("planner_model", "qwen2.5:7b") # Large code -> planner
+                preferred = [p for p in cls._plugins if p.model_name() == target]
+                capable_plugins = _dedupe(capable_plugins + preferred)
+            elif task_type in [TaskType.KEYWORDS, TaskType.CLASSIFY, TaskType.ENRICHMENT]:
+                target = cfg.get("utility_model", "gemma3:4b")
+                preferred = [p for p in capable_plugins if p.model_name() == target]
 
         fallback_chain = preferred + [p for p in capable_plugins if p not in preferred]
         

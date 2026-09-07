@@ -96,7 +96,7 @@
 }
 
 .nav-item-row.active .nav-item-icon-box {
-  background-color: rgba(30, 64, 175, 0.12);
+  background-color: rgba(82, 39, 199, 0.12);
   color: var(--brand);
 }
 
@@ -126,11 +126,11 @@
 }
 
 .nav-item-row.active .nav-item-sub {
-  color: var(--brand-accent);
+  color: var(--brand);
 }
 
 .nav-item-chevron {
-  color: #94A3B8;
+  color: var(--text-light);
   opacity: 0.6;
   shrink: 0;
 }
@@ -146,7 +146,7 @@
   letter-spacing: 0.05em;
   padding: 0.15rem 0.45rem;
   border-radius: 4px;
-  background: rgba(30, 64, 175, 0.1);
+  background: rgba(82, 39, 199, 0.1);
   color: var(--brand);
   border: 1px solid var(--brand-border);
 }
@@ -172,13 +172,14 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background-color: var(--brand);
+  background: linear-gradient(135deg, #5227c7 0%, #7040f7 100%);
   color: #FFFFFF;
   font-size: 0.8rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 2px 6px rgba(82, 39, 199, 0.3);
 }
 
 .sidebar-user-info {

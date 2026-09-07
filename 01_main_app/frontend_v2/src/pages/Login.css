@@ -5,23 +5,42 @@
   min-height: 100vh;
   background-color: var(--bg-color);
   background-image: 
-    radial-gradient(circle at 50% 20%, rgba(37, 99, 235, 0.08) 0%, transparent 60%),
-    radial-gradient(circle at 80% 80%, rgba(124, 58, 237, 0.05) 0%, transparent 50%);
+    radial-gradient(circle at 30% 20%, rgba(82, 39, 199, 0.08) 0%, transparent 55%),
+    radial-gradient(circle at 75% 80%, rgba(255, 109, 52, 0.07) 0%, transparent 50%);
   padding: 1.5rem;
 }
 
 .login-card {
   width: 100%;
-  max-width: 480px;
+  max-width: 500px;
   padding: 2.5rem 2rem;
   background: #FFFFFF;
   border: 1px solid var(--border-color);
-  border-radius: 1.25rem;
-  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.08), 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+  border-radius: 1.5rem;
+  box-shadow: 0 24px 48px -12px rgba(82, 39, 199, 0.12), 0 2px 4px 0 rgba(0, 0, 0, 0.03);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-xl);
+  gap: var(--spacing-lg);
+  animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.login-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.login-back-btn:hover {
+  color: var(--brand);
+  background-color: var(--brand-soft);
 }
 
 .login-header {
@@ -32,40 +51,20 @@
   gap: 0.5rem;
 }
 
-.logo-icon-large {
-  width: 68px;
-  height: 68px;
-  background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 50%, #6366F1 100%);
-  border-radius: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 0.75rem;
-  box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.45), 0 8px 10px -6px rgba(99, 102, 241, 0.35);
-  border: 1.5px solid rgba(255, 255, 255, 0.4);
-  position: relative;
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
-}
-
-.logo-icon-large:hover {
-  transform: translateY(-2px) scale(1.04);
-  box-shadow: 0 15px 30px -5px rgba(37, 99, 235, 0.55), 0 10px 15px -5px rgba(99, 102, 241, 0.45);
-}
-
 .login-title-maestro {
   font-family: 'Libre Baskerville', Georgia, serif;
   font-size: 2.2rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--text-heading);
-  margin: 0;
+  margin-top: 0.5rem;
   line-height: 1.2;
 }
 
 .login-subtitle-maestro {
   font-size: 0.88rem;
   color: var(--text-muted);
-  max-width: 400px;
+  max-width: 420px;
   line-height: 1.45;
   margin: 0;
 }
@@ -74,7 +73,7 @@
   margin-top: 0.6rem;
   display: inline-flex;
   align-items: center;
-  padding: 0.25rem 0.8rem;
+  padding: 0.25rem 0.85rem;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -101,35 +100,49 @@
   border-radius: var(--radius-lg);
   background-color: #FFFFFF;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   text-align: left;
 }
 
 .login-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px -4px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-md);
 }
 
+/* Creator Portal Button: Orange Accents (#ff6d34) */
 .user-btn:hover {
-  border-color: var(--brand);
-  background-color: #F8FAFC;
+  border-color: var(--accent-orange);
+  background-color: var(--accent-orange-soft);
 }
 
 .user-btn .btn-icon {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(30, 64, 175, 0.06));
-  color: var(--brand);
-  border: 1px solid rgba(37, 99, 235, 0.2);
+  background: linear-gradient(135deg, rgba(255, 109, 52, 0.15), rgba(255, 109, 52, 0.05));
+  color: var(--accent-orange);
+  border: 1px solid rgba(255, 109, 52, 0.25);
 }
 
+.user-btn:hover .btn-icon {
+  background: var(--accent-orange);
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(255, 109, 52, 0.35);
+}
+
+/* Admin Portal Button: Violet (#5227c7) */
 .admin-btn:hover {
-  border-color: #7C3AED;
-  background-color: #FAF5FF;
+  border-color: var(--brand);
+  background-color: var(--brand-soft);
 }
 
 .admin-btn .btn-icon {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.12), rgba(99, 102, 241, 0.06));
-  color: #7C3AED;
-  border: 1px solid rgba(124, 58, 237, 0.2);
+  background: linear-gradient(135deg, rgba(82, 39, 199, 0.12), rgba(112, 64, 247, 0.06));
+  color: var(--brand);
+  border: 1px solid rgba(82, 39, 199, 0.25);
+}
+
+.admin-btn:hover .btn-icon {
+  background: var(--brand);
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(82, 39, 199, 0.35);
 }
 
 .btn-icon {
@@ -140,7 +153,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: transform 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .login-btn:hover .btn-icon {
@@ -152,7 +165,7 @@
 }
 
 .btn-text h3 {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 1.02rem;
   font-weight: 600;
   color: var(--text-heading);
@@ -176,13 +189,13 @@
 }
 
 .account-tag.creator {
-  background: #EFF6FF;
-  color: #1D4ED8;
-  border: 1px solid #BFDBFE;
+  background: var(--accent-orange-soft);
+  color: var(--accent-orange);
+  border: 1px solid var(--accent-orange-border);
 }
 
 .account-tag.admin {
-  background: #F3E8FF;
-  color: #6D28D9;
-  border: 1px solid #DDD6FE;
+  background: var(--brand-soft);
+  color: var(--brand);
+  border: 1px solid var(--brand-border);
 }

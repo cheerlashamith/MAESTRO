@@ -1,36 +1,42 @@
-@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-  /* Blue & White Enterprise Design System */
-  --bg-color: #F8FAFC;
-  --surface: #F8FAFC;
+  /* Purple & White Enterprise Design System */
+  --bg-color: #F8F7FC;
+  --surface: #F8F7FC;
   --card-bg: #FFFFFF;
-  --border-color: #E2E8F0;
-  --border-light: #F1F5F9;
+  --border-color: #E6E1F4;
+  --border-light: #F1EFF9;
 
-  /* Blue Brand Colors */
-  --brand: #1E40AF;        /* Deep Royal Blue */
-  --brand-dark: #1E3A8A;   /* Navy Blue */
-  --brand-light: #2563EB;  /* Vibrant Blue */
-  --brand-soft: #EFF6FF;   /* Soft Ice Blue */
-  --brand-border: #BFDBFE; /* Subtle Blue Border */
-  --brand-accent: #3B82F6; /* Sky Accent */
+  /* Violet Brand Colors (#5227c7) */
+  --brand: #5227c7;        /* Core Violet Brand */
+  --brand-dark: #3a1994;   /* Deep Midnight Violet */
+  --brand-light: #7040f7;  /* Radiant Violet */
+  --brand-soft: #F4F0FF;   /* Soft Lavender Tint */
+  --brand-border: #D8CEFB; /* Lavender Border */
+  --brand-accent: #ff6d34; /* Energetic Accent Orange */
 
-  --primary-color: #1E40AF;
-  --primary-hover: #1E3A8A;
-  --accent-color: #2563EB;
-  --accent-purple: #7C3AED;
-  --accent-indigo: #4F46E5;
-  --brand-gradient: linear-gradient(135deg, #1E40AF 0%, #3B82F6 50%, #6366F1 100%);
-  --brand-gradient-glow: 0 10px 25px -5px rgba(37, 99, 235, 0.4), 0 8px 10px -6px rgba(99, 102, 241, 0.3);
+  --primary-color: #5227c7;
+  --primary-hover: #431ea3;
+  --accent-color: #7040f7;
+  --accent-purple: #8b5cf6;
+  --accent-indigo: #6366f1;
 
+  /* Signature Orange Action Accents (#ff6d34) */
+  --accent-orange: #ff6d34;
+  --accent-orange-hover: #e6551b;
+  --accent-orange-soft: #FFF2EC;
+  --accent-orange-border: #FFD4C2;
 
-  /* Text & Contrast Tokens (Fixes unreadable text bugs) */
-  --text-color: #0F172A;   /* Slate 900 */
-  --text-heading: #0F172A;
-  --text-body: #334155;    /* Slate 700 */
-  --text-muted: #64748B;   /* Slate 500 */
-  --text-light: #94A3B8;
+  --brand-gradient: linear-gradient(135deg, #5227c7 0%, #7040f7 50%, #ff6d34 100%);
+  --brand-gradient-glow: 0 10px 25px -5px rgba(82, 39, 199, 0.4), 0 8px 10px -6px rgba(255, 109, 52, 0.3);
+
+  /* Text & Contrast Tokens */
+  --text-color: #171026;   /* Rich Deep Violet Charcoal */
+  --text-heading: #140d24;
+  --text-body: #37304a;    /* Muted Slate Violet */
+  --text-muted: #6b6380;   /* Lavender Grey */
+  --text-light: #9b93af;
 
   /* Functional Colors */
   --success-color: #059669;
@@ -42,14 +48,14 @@
 
   /* Layout & Glass */
   --sidebar-bg: #FFFFFF;
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(226, 232, 240, 0.8);
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(230, 225, 244, 0.8);
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(82, 39, 199, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 12px -2px rgba(82, 39, 199, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 12px 24px -4px rgba(82, 39, 199, 0.1), 0 4px 8px -4px rgba(0, 0, 0, 0.03);
+  --shadow-xl: 0 20px 32px -6px rgba(82, 39, 199, 0.15), 0 8px 16px -6px rgba(255, 109, 52, 0.08);
 
   /* Spacing */
   --spacing-xs: 0.25rem;
@@ -73,14 +79,14 @@
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   background-color: var(--bg-color);
   color: var(--text-color);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Typography - Libre Baskerville for headings per user request */
+/* Typography */
 h1, h2, h3, .heading-serif, .brand-title {
   font-family: 'Libre Baskerville', Georgia, serif;
   color: var(--text-heading);
@@ -89,7 +95,7 @@ h1, h2, h3, .heading-serif, .brand-title {
 }
 
 h4, h5, h6 {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   font-weight: 600;
   color: var(--text-heading);
 }
@@ -97,6 +103,11 @@ h4, h5, h6 {
 a {
   color: var(--primary-color);
   text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--brand-light);
 }
 
 button {
@@ -112,6 +123,12 @@ button {
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-sm);
   border-radius: var(--radius-lg);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.glass-panel:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--brand-border);
 }
 
 .card {
@@ -120,6 +137,12 @@ button {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   padding: var(--spacing-lg);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--brand-border);
 }
 
 /* Base Layout */
@@ -167,40 +190,60 @@ button {
 }
 
 .input-field:focus {
-  border-color: var(--brand-accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(82, 39, 199, 0.15);
 }
 
-/* Buttons */
+/* Buttons - Orange Action & Violet Brand Accents */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.55rem 1.1rem;
+  padding: 0.55rem 1.15rem;
   border-radius: var(--radius-md);
-  font-weight: 500;
+  font-weight: 600;
   font-size: 0.875rem;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
 }
 
+/* Primary Action Button: Glowing Orange (#ff6d34) */
 .btn-primary {
-  background-color: #DC2626;
+  background-color: var(--accent-orange);
   color: #FFFFFF;
-  border: 1px solid #DC2626;
+  border: 1px solid var(--accent-orange);
   font-weight: 600;
-  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
+  box-shadow: 0 4px 12px rgba(255, 109, 52, 0.3);
 }
 
 .btn-primary:hover {
-  background-color: #B91C1C;
-  border-color: #B91C1C;
-  box-shadow: 0 4px 8px rgba(220, 38, 38, 0.3);
+  background-color: var(--accent-orange-hover);
+  border-color: var(--accent-orange-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(255, 109, 52, 0.42);
 }
 
 .btn-primary:active {
-  background-color: #991B1B;
-  border-color: #991B1B;
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(255, 109, 52, 0.3);
+}
+
+/* Brand Button: Violet (#5227c7) */
+.btn-brand, .btn-violet {
+  background-color: var(--brand);
+  color: #FFFFFF;
+  border: 1px solid var(--brand);
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(82, 39, 199, 0.25);
+}
+
+.btn-brand:hover, .btn-violet:hover {
+  background-color: var(--brand-dark);
+  border-color: var(--brand-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(82, 39, 199, 0.38);
 }
 
 .btn-secondary {
@@ -211,7 +254,9 @@ button {
 
 .btn-secondary:hover {
   background-color: var(--border-light);
-  color: var(--text-color);
+  color: var(--text-heading);
+  border-color: var(--brand-border);
+  transform: translateY(-1px);
 }
 
 .btn-outline {
@@ -222,6 +267,8 @@ button {
 
 .btn-outline:hover {
   background-color: var(--brand-soft);
+  border-color: var(--brand);
+  transform: translateY(-1px);
 }
 
 .btn-danger {
@@ -230,7 +277,8 @@ button {
 }
 
 .btn-danger:hover {
-  background-color: #B91C1C;
+  background-color: #b91c1c;
+  transform: translateY(-1px);
 }
 
 .btn-success {
@@ -240,6 +288,7 @@ button {
 
 .btn-success:hover {
   background-color: #047857;
+  transform: translateY(-1px);
 }
 
 /* Badge Styles */
@@ -247,16 +296,22 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.2rem 0.6rem;
+  padding: 0.2rem 0.65rem;
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 600;
 }
 
-.badge-blue {
+.badge-purple, .badge-blue {
   background: var(--brand-soft);
   color: var(--brand);
   border: 1px solid var(--brand-border);
+}
+
+.badge-orange {
+  background: var(--accent-orange-soft);
+  color: var(--accent-orange);
+  border: 1px solid var(--accent-orange-border);
 }
 
 .badge-success {
@@ -271,7 +326,7 @@ button {
   border: 1px solid #FDE68A;
 }
 
-/* Animations */
+/* Global Animations */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -279,4 +334,41 @@ button {
 
 .spin {
   animation: spin 1s linear infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.float-animation {
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(82, 39, 199, 0.2), 0 0 30px rgba(255, 109, 52, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(82, 39, 199, 0.4), 0 0 45px rgba(255, 109, 52, 0.25);
+  }
+}
+
+.pulse-glow {
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

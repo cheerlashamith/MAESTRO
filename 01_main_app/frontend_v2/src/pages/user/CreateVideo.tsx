@@ -58,7 +58,7 @@ export default function CreateVideo() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          mode: mode === 'manual' ? 'manual_course' : mode,
+          mode: mode === 'youtube' ? 'youtube_extract' : (mode === 'manual' ? 'manual_course' : mode),
           topic: topic,
           youtube_url: mode === 'youtube' ? topic : undefined,
           visual_style: visualStyle,

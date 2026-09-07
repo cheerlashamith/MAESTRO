@@ -3,11 +3,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Search, 
   ArrowLeftRight, 
-  Video, 
   Shield, 
   LogOut, 
-  ChevronDown
+  ChevronDown,
+  Home
 } from 'lucide-react';
+import MaestroLogo from './MaestroLogo';
 import './Navbar.css';
 
 export default function Navbar() {
@@ -57,10 +58,8 @@ export default function Navbar() {
     <header className="navbar-enterprise">
       {/* Left: Brand Identity */}
       <div className="navbar-brand-section">
-        <div className="brand-logo-badge" onClick={() => navigate(isAdmin ? '/admin/studio' : '/user/create')} title={projectFullName}>
-          <div className="logo-spark-icon">
-            <Video size={18} className="logo-icon-svg" />
-          </div>
+        <div className="brand-logo-badge" onClick={() => navigate('/')} title={`Maestro Home - ${projectFullName}`}>
+          <MaestroLogo size="sm" showText={false} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
             <span className="brand-title">{projectName}</span>
             <span className="brand-sub-badge">ENGINE</span>
@@ -87,6 +86,16 @@ export default function Navbar() {
 
       {/* Right: Actions, Portal Switcher & Profile */}
       <div className="navbar-actions-section">
+        {/* Home Button */}
+        <button 
+          onClick={() => navigate('/')}
+          className="nav-home-btn"
+          title="Return to Maestro Landing Page"
+        >
+          <Home size={14} />
+          <span>Home</span>
+        </button>
+
         {/* Portal Switcher Button */}
         <button 
           onClick={togglePortal}

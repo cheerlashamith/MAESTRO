@@ -611,12 +611,12 @@ def _slug(text: str) -> str:
 # SINGLE PLAN GENERATION
 # ---------------------------------------------------------------------------
 
-def _generate_course_plan(topic_name: str, subtopics: List[str], unit_title: str, notes: Optional[str] = None) -> Dict[str, Any]:
+def _generate_course_plan(topic_name: str, subtopics: List[str], unit_title: str, notes: Optional[str] = None, preferred_model: Optional[str] = None) -> Dict[str, Any]:
     """Generate a course plan using the LLM, with schema-safe post-processing and resilient offline fallback."""
     prompt = _course_prompt(topic_name, subtopics, unit_title, notes)
     plan = None
     try:
-        raw = BrainManager.ask(prompt, TaskType.PLANNING)
+        raw = BrainManager.ask(prompt, TaskType.PLANNING, preferred_model=preferred_model)
         plan = _extract_json(raw)
     except Exception as e:
         print(f"[Planner] LLM generation failed ({e}). Using curriculum fallback template.")
@@ -653,12 +653,12 @@ def _generate_course_plan(topic_name: str, subtopics: List[str], unit_title: str
     return _clean_plan(plan, topic_name, unit_title, subtopics)
 
 
-def _generate_story_plan(topic_name: str, notes: Optional[str] = None) -> Dict[str, Any]:
+def _generate_story_plan(topic_name: str, notes: Optional[str] = None, preferred_model: Optional[str] = None) -> Dict[str, Any]:
     """Generate a story plan using the LLM with resilient offline fallback."""
     prompt = _story_prompt(topic_name, notes)
     plan = None
     try:
-        raw = BrainManager.ask(prompt, TaskType.STORY)
+        raw = BrainManager.ask(prompt, TaskType.STORY, preferred_model=preferred_model)
         plan = _extract_json(raw)
     except Exception as e:
         print(f"[Planner] LLM story generation failed ({e}). Using resilient story fallback.")
@@ -668,22 +668,22 @@ def _generate_story_plan(topic_name: str, notes: Optional[str] = None) -> Dict[s
             "subject": topic_name,
             "render_mode": "story",
             "visual_style": "comfyui_story",
-            "keywords": "story, adventure, moral, animated narrative, wisdom",
-            "moneyprinter_script": f"Once upon a time in a peaceful village, an inspiring journey began regarding {topic_name}. Together with trusted companions, challenges were faced with perseverance and courage. Through kindness and clever thinking, harmony was restored, teaching everyone the true value of friendship and resilience.",
+            "keywords": f"{topic_name}, story, adventure, motivation",
+            "moneyprinter_script": f"Deep in a forgotten realm, {topic_name} transformed everything known to humanity. A brave soul ventured forward against impossible odds. In that defining moment of triumph, destiny was rewritten forever.",
             "scenes": [
                 {
-                    "name": "scene_01_beginning",
-                    "title": f"The Journey of {topic_name}",
-                    "prompt": f"Vertical 9:16 storybook illustration of a magical land with lush green hills and warm morning light, no text, no watermark",
-                    "narration": f"Once upon a time in a peaceful village, an inspiring journey began regarding {topic_name}.",
-                    "bullets": ["A peaceful beginning", "The calling to adventure"]
+                    "name": "scene_01_prologue",
+                    "title": "A World Unknown",
+                    "prompt": f"Vertical 9:16 cinematic digital concept art of {topic_name}, mysterious atmosphere, moody volumetric lighting, masterpiece, no text, no watermark",
+                    "narration": f"Deep in a forgotten realm, {topic_name} transformed everything known to humanity.",
+                    "bullets": ["The journey begins", "Ancient secrets"]
                 },
                 {
-                    "name": "scene_02_challenge",
-                    "title": "A Great Challenge",
-                    "prompt": "Vertical 9:16 illustration of brave characters facing a mystical winding mountain pass at dusk, no text, no watermark",
-                    "narration": "Together with trusted companions, challenges were faced with perseverance and courage.",
-                    "bullets": ["Confronting the unknown", "Teamwork in action"]
+                    "name": "scene_02_conflict",
+                    "title": "The Trials Ahead",
+                    "prompt": f"Vertical 9:16 epic dramatic fantasy landscape related to {topic_name}, high contrast, intense colors, cinematic depth of field, masterpiece, no text, no watermark",
+                    "narration": "A brave soul ventured forward against impossible odds.",
+                    "bullets": ["Rising challenge", "Unbreakable resolve"]
                 },
                 {
                     "name": "scene_03_resolution",
@@ -698,12 +698,12 @@ def _generate_story_plan(topic_name: str, notes: Optional[str] = None) -> Dict[s
     return _clean_plan(plan, topic_name, "Story Mode", [])
 
 
-def _generate_pexels_plan(topic_name: str, notes: Optional[str] = None) -> Dict[str, Any]:
+def _generate_pexels_plan(topic_name: str, notes: Optional[str] = None, preferred_model: Optional[str] = None) -> Dict[str, Any]:
     """Generate a Pexels-style script plan using the LLM with resilient offline fallback."""
     prompt = _pexels_prompt(topic_name, notes)
     plan = None
     try:
-        raw = BrainManager.ask(prompt, TaskType.PLANNING)
+        raw = BrainManager.ask(prompt, TaskType.PLANNING, preferred_model=preferred_model)
         plan = _extract_json(raw)
     except Exception as e:
         print(f"[Planner] LLM stock script generation failed ({e}). Using resilient explainer fallback.")
@@ -740,12 +740,12 @@ def _generate_pexels_plan(topic_name: str, notes: Optional[str] = None) -> Dict[
     return _clean_plan(plan, topic_name, "General Topic", [])
 
 
-def _generate_youtube_plan(video_title: str, transcript: str, notes: Optional[str] = None) -> Dict[str, Any]:
+def _generate_youtube_plan(video_title: str, transcript: str, notes: Optional[str] = None, preferred_model: Optional[str] = None) -> Dict[str, Any]:
     """Generate a Pexels-style script plan from a YouTube transcript."""
     prompt = _youtube_prompt(video_title, transcript, notes)
     plan = None
     try:
-        raw = BrainManager.ask(prompt, TaskType.PLANNING)
+        raw = BrainManager.ask(prompt, TaskType.PLANNING, preferred_model=preferred_model)
         plan = _extract_json(raw)
     except Exception as e:
         print(f"[Planner] LLM YouTube rewrite failed ({e}). Using transcript excerpt.")
@@ -809,20 +809,21 @@ Rules:
 def build_plan(req: GenerateRequest) -> Dict[str, Any]:
     """Build a single plan for the requested topic."""
     mode = Mode(req.mode) if isinstance(req.mode, str) else req.mode
+    pref_model = getattr(req, "model_override", None)
 
     if mode == Mode.story:
-        return _generate_story_plan(req.topic, req.notes)
+        return _generate_story_plan(req.topic, req.notes, preferred_model=pref_model)
 
     if mode == Mode.youtube_extract:
         if not req.youtube_url:
             raise ValueError("YouTube URL is required for YouTube extraction mode.")
         # Pipeline handles transcript extraction; this branch is for topic-only fallback.
         topic = req.topic or (req.youtube_url or "YouTube summary")
-        return _generate_pexels_plan(topic, req.notes)
+        return _generate_pexels_plan(topic, req.notes, preferred_model=pref_model)
 
     if mode == Mode.autonomous:
         topic_name = req.topic if req.topic else "Interesting Tech Fact"
-        return _generate_pexels_plan(topic_name, req.notes)
+        return _generate_pexels_plan(topic_name, req.notes, preferred_model=pref_model)
 
     # Manual course mode
     syllabus = _load_syllabus()
@@ -833,17 +834,17 @@ def build_plan(req: GenerateRequest) -> Dict[str, Any]:
 
     matched = _match_topic(req.topic, topics)
     if matched:
-        return _generate_course_plan(matched["topic"], matched["subtopics"], matched["unit_title"], req.notes)
+        return _generate_course_plan(matched["topic"], matched["subtopics"], matched["unit_title"], req.notes, preferred_model=pref_model)
 
     # No syllabus match: ask the model to invent a plan based on its own knowledge
-    return _generate_course_plan(req.topic, ["Introduction", "Core Concept", "Example", "Summary"], "General Topic", req.notes)
+    return _generate_course_plan(req.topic, ["Introduction", "Core Concept", "Example", "Summary"], "General Topic", req.notes, preferred_model=pref_model)
 
 
-def build_youtube_plan(url: str, notes: Optional[str] = None) -> Dict[str, Any]:
+def build_youtube_plan(url: str, notes: Optional[str] = None, preferred_model: Optional[str] = None) -> Dict[str, Any]:
     """Build a plan from a YouTube URL by extracting transcript and rewriting it."""
     from backend.services.youtube import summarize_video
     info = summarize_video(url)
-    plan = _generate_youtube_plan(info["title"], info["transcript"], notes)
+    plan = _generate_youtube_plan(info["title"], info["transcript"], notes, preferred_model=preferred_model)
     plan["youtube_info"] = {
         "title": info["title"],
         "channel": info["channel"],

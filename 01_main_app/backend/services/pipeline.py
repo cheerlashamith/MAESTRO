@@ -351,7 +351,7 @@ def run_job(job_id: str, req: GenerateRequest, output_dir: str):
         if mode == "youtube_extract":
             if not req.youtube_url:
                 raise ValueError("YouTube URL is required for YouTube extraction mode.")
-            plan = build_youtube_plan(req.youtube_url, req.notes)
+            plan = build_youtube_plan(req.youtube_url, req.notes, preferred_model=getattr(req, "model_override", None))
         else:
             plan = build_plan(req)
 

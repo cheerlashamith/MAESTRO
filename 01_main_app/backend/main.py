@@ -454,6 +454,17 @@ def api_youtube_analytics():
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
+@app.post("/api/youtube/trigger-autonomous")
+def api_trigger_autonomous(force: bool = Query(default=True)):
+    """Trigger an on-demand closed-loop autonomous channel cycle immediately."""
+    from backend.services.analytics_agent import trigger_autonomous_cycle
+    try:
+        result = trigger_autonomous_cycle(force=force)
+        return result
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
 # ---------------------------------------------------------------------------
 # Admin & Configuration Endpoints
 # ---------------------------------------------------------------------------
@@ -837,6 +848,16 @@ def test_provider(payload: dict = Body(...)):
         return ProviderService.test_pexels(key)
     else:
         raise HTTPException(400, f"Unknown provider '{provider}'")
+
+
+@app.post("/api/providers/connect")
+def connect_provider(payload: dict = Body(...)):
+    from backend.services.provider_service import ProviderService
+    provider = payload.get("provider", "").lower()
+    url = payload.get("url")
+    root_path = payload.get("root_path")
+    return ProviderService.start_or_connect(provider, url=url, root_path=root_path)
+
 
 
 

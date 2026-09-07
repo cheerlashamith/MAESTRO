@@ -1,0 +1,19 @@
+services:
+  # MAESTRO Web Dashboard & Video Rendering Engine
+  - type: web
+    name: maestro-suite
+    runtime: docker
+    dockerfilePath: 01_main_app/Dockerfile
+    dockerContext: 01_main_app
+    plan: starter # Starter plan prevents container sleep so 24/7 background automation stays active
+    region: oregon
+    healthCheckPath: /api/providers/health
+    envVars:
+      - key: PORT
+        value: 8765
+      - key: PYTHONUNBUFFERED
+        value: 1
+    disk:
+      name: maestro-storage
+      mountPath: /app/data
+      sizeGB: 10

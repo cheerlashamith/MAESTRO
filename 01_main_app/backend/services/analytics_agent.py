@@ -20,7 +20,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from backend.core.config import get_config, feature_enabled
-from backend.services.youtube_upload import get_all_analytics
+from backend.services.youtube_upload import (
+    get_all_analytics,
+    get_video_comments,
+    post_video_comment,
+    fetch_trending_niche_topics
+)
 from backend.services.youtube_auth import get_authenticated_service, is_authenticated
 from backend.services.youtube_optimizer import optimize_metadata
 from backend.services.brain_manager import BrainManager
@@ -182,10 +187,16 @@ def trigger_autonomous_cycle(force: bool = False) -> Dict[str, Any]:
         strategy_decision = "double_down"
         top_winner = max(winners, key=lambda w: int(w.get("views") or 0))
         win_topic = top_winner.get("topic") or top_winner.get("title", "Computer Science Architecture")
+        win_vid = top_winner.get("video_id")
+        comments = get_video_comments(win_vid, max_results=8) if win_vid else []
+        audience_notes = "\n".join([f"- {c['author']}: {c['text'][:100]}" for c in comments]) if comments else "Audience engaged with high retention."
 
         prompt = f"""You are an expert YouTube Content Director.
 Our recent video on '{win_topic}' was a massive breakout winner with high views and engagement.
-Formulate ONE high-yield sequel, advanced continuation, or related deep-dive topic to capture audience momentum.
+Viewer Comments & Audience Feedback:
+{audience_notes}
+
+Formulate ONE high-yield sequel, advanced continuation, or related deep-dive topic to address viewer questions and capture audience momentum.
 Choose the best mode out of: "manual_course", "story", "youtube_extract", "autonomous".
 
 Return ONLY a JSON object:
@@ -212,13 +223,20 @@ Return ONLY a JSON object:
         strategy_decision = "pivot_mode"
         # Refresh live metadata for top underperformer
         top_flop = underperformers[0]
-        if top_flop.get("youtube_video_id"):
-            _try_refresh_live_metadata(top_flop["youtube_video_id"], top_flop.get("topic", ""))
+        if top_flop.get("video_id"):
+            _try_refresh_live_metadata(top_flop["video_id"], top_flop.get("topic", ""))
+
+        flop_vid = top_flop.get("video_id")
+        flop_comments = get_video_comments(flop_vid, max_results=6) if flop_vid else []
+        audience_feedback = "\n".join([f"- {c['author']}: {c['text'][:100]}" for c in flop_comments]) if flop_comments else "Low click-through and viewer drop-off."
 
         failed_titles = [str(u.get("topic") or u.get("title", "")) for u in underperformers[:3]]
         prompt = f"""You are an expert YouTube Channel Strategist.
 The following topics recently underperformed (low click-through and views):
 {', '.join(failed_titles)}
+
+Audience Comments/Retention Signals:
+{audience_feedback}
 
 We need to pivot to a fresh, viral, high-velocity topic in programming, AI, or software design.
 Select the best production mode out of: "story" (cinematic narrative shorts), "manual_course" (algorithmic tutorial), or "autonomous" (tech breakthrough).
@@ -242,19 +260,51 @@ Return ONLY a JSON object:
         except Exception as e:
             print(f"[AnalyticsAgent] Error generating pivot topic: {e}")
 
-    # Strategy 3: Cold Start / Initial Channel Seeding
+    # Strategy 3: Cold Start / Initial Channel Seeding with Live YouTube Trends
     if not new_topic:
         strategy_decision = "seeding"
-        candidate_topics = [
-            ("Mastering Microservices & Distributed Event Buses", Mode.manual_course),
-            ("The Day the World's Financial Algorithms Stopped", Mode.story),
-            ("Clean Architecture & Domain Driven Design in Practice", Mode.manual_course),
-            ("Inside the Quantum Computing Revolution", Mode.autonomous),
-        ]
-        import random
-        choice = random.choice(candidate_topics)
-        new_topic, selected_mode = choice
-        keywords = "software architecture, system design, high performance, algorithms"
+        trends = fetch_trending_niche_topics("software engineering coding tutorial breakthrough", max_results=6)
+        trend_titles = [t.get("title", "") for t in trends if t.get("title")]
+
+        if trend_titles:
+            trends_str = "\n".join([f"- {t}" for t in trend_titles[:5]])
+            prompt = f"""You are an expert YouTube Tech Channel Producer.
+Here are current trending tech & coding video topics on YouTube:
+{trends_str}
+
+Analyze these trending topics and formulate ONE original, viral, high-authority tutorial or explainer topic that captures this search demand.
+Select the best mode out of: "manual_course", "story", "youtube_extract", "autonomous".
+
+Return ONLY a JSON object:
+{{
+    "new_topic": "Unique Viral Topic Title",
+    "mode": "manual_course",
+    "keywords": "kw1, kw2, kw3, kw4",
+    "reasoning": "Why this will capture high search velocity"
+}}
+"""
+            try:
+                raw = BrainManager.ask(prompt, TaskType.PLANNING)
+                parsed = _extract_json(raw)
+                if parsed and parsed.get("new_topic"):
+                    new_topic = str(parsed["new_topic"]).strip()
+                    keywords = str(parsed.get("keywords", ""))
+                    mode_str = str(parsed.get("mode", "manual_course")).lower()
+                    selected_mode = Mode(mode_str) if mode_str in [m.value for m in Mode] else Mode.manual_course
+            except Exception as e:
+                print(f"[AnalyticsAgent] Error synthesizing trending topic: {e}")
+
+        if not new_topic:
+            candidate_topics = [
+                ("Mastering Microservices & Distributed Event Buses", Mode.manual_course),
+                ("The Day the World's Financial Algorithms Stopped", Mode.story),
+                ("Clean Architecture & Domain Driven Design in Practice", Mode.manual_course),
+                ("Inside the Quantum Computing Revolution", Mode.autonomous),
+            ]
+            import random
+            choice = random.choice(candidate_topics)
+            new_topic, selected_mode = choice
+            keywords = "software architecture, system design, high performance, algorithms"
 
     # Style mapping
     if selected_mode == Mode.story:

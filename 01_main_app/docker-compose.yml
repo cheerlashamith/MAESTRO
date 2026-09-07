@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # MAESTRO Web API & Frontend Suite
+  maestro-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: maestro-web
+    restart: always
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+      - ./token.json:/app/token.json
+      - ./client_secret.json:/app/client_secret.json
+      - ./config.json:/app/config.json
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=8765
+
+  # 24/7 Autonomous Channel Director Daemon (Runs 24/7 even when your laptop is off!)
+  maestro-daemon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: maestro-daemon
+    restart: always
+    command: ["python", "run_autonomous_daemon.py"]
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+      - ./token.json:/app/token.json
+      - ./client_secret.json:/app/client_secret.json
+      - ./config.json:/app/config.json
+    environment:
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - maestro-web

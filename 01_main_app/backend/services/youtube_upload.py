@@ -195,3 +195,91 @@ def get_all_analytics() -> Dict[str, Any]:
             "error": str(e),
             "analytics": []
         }
+
+
+def get_video_comments(video_id: str, max_results: int = 15) -> List[Dict[str, Any]]:
+    """
+    Fetch top viewer comments for a video via YouTube Data API v3.
+    Used by the Autonomous Channel Director to analyze audience sentiment,
+    feedback, and requested topics.
+    """
+    if not is_authenticated() or not video_id:
+        return []
+    try:
+        youtube = get_authenticated_service()
+        response = youtube.commentThreads().list(
+            part="snippet",
+            videoId=video_id,
+            maxResults=min(max_results, 50),
+            order="relevance",
+            textFormat="plainText"
+        ).execute()
+
+        comments = []
+        for item in response.get("items", []):
+            top = item.get("snippet", {}).get("topLevelComment", {}).get("snippet", {})
+            comments.append({
+                "author": top.get("authorDisplayName", "Viewer"),
+                "text": top.get("textDisplay", ""),
+                "like_count": int(top.get("likeCount", 0)),
+                "published_at": top.get("publishedAt", "")
+            })
+        return comments
+    except Exception as e:
+        print(f"[YouTubeUpload] Could not fetch comments for video {video_id}: {e}")
+        return []
+
+
+def post_video_comment(video_id: str, text: str) -> Optional[str]:
+    """Post an official channel comment (e.g. pinned discussion prompt)."""
+    if not is_authenticated() or not video_id or not text:
+        return None
+    try:
+        youtube = get_authenticated_service()
+        response = youtube.commentThreads().insert(
+            part="snippet",
+            body={
+                "snippet": {
+                    "videoId": video_id,
+                    "topLevelComment": {
+                        "snippet": {
+                            "textOriginal": text
+                        }
+                    }
+                }
+            }
+        ).execute()
+        return response.get("id")
+    except Exception as e:
+        print(f"[YouTubeUpload] Could not post comment to video {video_id}: {e}")
+        return None
+
+
+def fetch_trending_niche_topics(query: str = "software engineering tutorial", max_results: int = 8) -> List[Dict[str, Any]]:
+    """Fetch high-velocity trending search topics in the channel's niche."""
+    if not is_authenticated():
+        return []
+    try:
+        youtube = get_authenticated_service()
+        cutoff = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)).isoformat()
+        res = youtube.search().list(
+            part="snippet",
+            q=query,
+            type="video",
+            order="viewCount",
+            publishedAfter=cutoff,
+            maxResults=min(max_results, 25)
+        ).execute()
+        trends = []
+        for item in res.get("items", []):
+            snippet = item.get("snippet", {})
+            trends.append({
+                "title": snippet.get("title", ""),
+                "description": snippet.get("description", ""),
+                "channel": snippet.get("channelTitle", "")
+            })
+        return trends
+    except Exception as e:
+        print(f"[YouTubeUpload] Trending search error: {e}")
+        return []
+

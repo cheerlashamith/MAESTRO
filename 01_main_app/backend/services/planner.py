@@ -396,7 +396,9 @@ Rules:
    - "network" (for graphs, adjacency lists)
    - "cycle" (for circular processes)
    - "timeline" (for historical/sequential steps)
-5. For "tree" diagram_type, provide visual_data with: nodes (list of integers like [50,30,70,20,40,60,80]), tree_type ("bst" or "heap"), optionally highlight (integer to highlight), optionally insert (integer being inserted).
+   - "custom_code" (for rich, dynamic custom Python Manim scenes generated on the fly - e.g. physics, geometric transformations, graphs, 3D math)
+5. For "custom_code" diagram_type, provide visual_data with: "manim_code" (a valid Python snippet to animate mobjects like self.play(Create(...)), self.play(Transform(...)), self.play(Write(MathTex(...))), etc.).
+   For "tree" diagram_type, provide visual_data with: nodes (list of integers like [50,30,70,20,40,60,80]), tree_type ("bst" or "heap"), optionally highlight (integer to highlight), optionally insert (integer being inserted).
    For "sorting", provide visual_data with: values (list of integers), optionally swaps (list of [i,j] pairs), optionally highlight (list of indices).
    For "linked_list", provide visual_data with: values (list of node labels like ["head","10","20","null"]), optionally doubly (true/false).
    For "stack", provide visual_data with: values (list of stack element labels, bottom first).
@@ -585,6 +587,10 @@ def _clean_plan(plan: Dict[str, Any], topic_name: str, unit_title: str, subtopic
             if scene.get("diagram_type") in ["cycle"] and "steps" not in vd:
                 vd["steps"] = ["Step 1", "Step 2", "Step 3", "Step 4"]
             # New diagram type validations
+            if scene.get("diagram_type") in ["custom_code", "custom", "dynamic_code"] or vd.get("manim_code") or scene.get("custom_manim_code"):
+                # Preserve dynamic custom Python Manim code untouched
+                if not vd.get("manim_code") and not scene.get("custom_manim_code"):
+                    vd["manim_code"] = "c = Circle(radius=1.8, color=VIOLET)\nself.play(Create(c), run_time=1)\nt = txt(sc.get('title','Concept'), 32, WHITE).move_to(c)\nself.play(Write(t), run_time=0.8)"
             if scene.get("diagram_type") in ["tree", "bst", "binary_tree"] and "nodes" not in vd:
                 vd.update({"nodes": [50, 30, 70, 20, 40, 60, 80], "tree_type": "bst"})
             if scene.get("diagram_type") in ["sorting", "sort"] and "values" not in vd:

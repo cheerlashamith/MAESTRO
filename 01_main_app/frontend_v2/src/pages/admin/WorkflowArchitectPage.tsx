@@ -93,6 +93,7 @@ export default function WorkflowArchitectPage() {
   const [topicInput, setTopicInput] = useState('');
   const [autonomousMode, setAutonomousMode] = useState(true);
   const [showRunModal, setShowRunModal] = useState(false);
+  const [watchModalJobId, setWatchModalJobId] = useState<string | null>(null);
   const sseRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
@@ -269,8 +270,8 @@ export default function WorkflowArchitectPage() {
     setShowNodePalette(false);
   };
 
-  // Update node parameters from NodeConfigModal
-  const handleUpdateNodeConfig = (nodeId: string, updatedConfig: Record<string, any>, updatedLabel?: string) => {
+  // Update node parameters from NodeConfigModal and AUTO-SAVE to backend
+  const handleUpdateNodeConfig = async (nodeId: string, updatedConfig: Record<string, any>, updatedLabel?: string) => {
     if (!activeWorkflow) return;
     const updatedNodes = activeWorkflow.nodes.map(n => {
       if (n.id === nodeId) {
@@ -283,12 +284,28 @@ export default function WorkflowArchitectPage() {
       return n;
     });
 
-    setActiveWorkflow({
+    const updatedWf = {
       ...activeWorkflow,
       nodes: updatedNodes
-    });
+    };
+
+    setActiveWorkflow(updatedWf);
     setSelectedNode(null);
-    showToastMsg('Node configuration updated!');
+
+    // Auto-save immediately to backend SQLite database
+    try {
+      const res = await fetch('/api/studio/workflows', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedWf)
+      });
+      if (res.ok) {
+        showToastMsg(`Saved! Node parameter updated in database.`);
+        setWorkflows(prev => prev.map(w => w.id === updatedWf.id ? updatedWf : w));
+      }
+    } catch (err) {
+      console.error('Failed to auto-save workflow config', err);
+    }
   };
 
   // Run pipeline live
@@ -892,6 +909,47 @@ export default function WorkflowArchitectPage() {
                 </>
               )}
 
+              {/* Manim Engine & Math Parameters */}
+              {selectedNode.node_type_id === 'nt-manim' && (
+                <>
+                  <div className="form-group-wrap">
+                    <label>Manim Code Generation Mode</label>
+                    <select className="input-field" defaultValue={selectedNode.config.code_generation_mode || 'dynamic_ai'} id="cfg-manim-mode">
+                      <option value="dynamic_ai">Dynamic AI Scene Code (GPT-4o-mini writes custom Python Manim code on the fly - No hardcoding!)</option>
+                      <option value="hybrid">Hybrid (Custom AI Scenes with Algorithmic Fallback)</option>
+                      <option value="template">Standard Mathematical / Algorithmic Templates</option>
+                    </select>
+                  </div>
+                  <div className="form-group-wrap">
+                    <label>Code Generator AI Model</label>
+                    <select className="input-field" defaultValue={selectedNode.config.model || 'gpt-4o-mini'} id="cfg-manim-model">
+                      <option value="gpt-4o-mini">OpenAI GPT-4o-Mini (Recommended: High Quality & Fast Python Manim Coder)</option>
+                      <option value="gpt-4o">OpenAI GPT-4o (Frontier Model)</option>
+                      <option value="qwen2.5:7b">Qwen 2.5:7B (Ollama Local - 100% Free)</option>
+                    </select>
+                  </div>
+                  <div className="form-group-wrap">
+                    <label>Resolution & Frame Rate</label>
+                    <select className="input-field" defaultValue={selectedNode.config.resolution || '1080p60'} id="cfg-manim-res">
+                      <option value="1080p60">1080p Full HD (60 FPS - Studio Quality)</option>
+                      <option value="1080p30">1080p Full HD (30 FPS - Fast Rendering)</option>
+                      <option value="720p30">720p HD (30 FPS - Quick Preview)</option>
+                      <option value="4k60">4K Ultra HD (60 FPS)</option>
+                    </select>
+                  </div>
+                  <div className="form-group-wrap">
+                    <label>Custom Animation & Style Directive Prompt</label>
+                    <textarea 
+                      className="input-field" 
+                      rows={3}
+                      defaultValue={selectedNode.config.custom_prompt || 'Design smooth, visually captivating mathematical and algorithmic animations. Use glowing gradients, 3D coordinate transformations, and clear step-by-step element morphing.'}
+                      id="cfg-manim-prompt"
+                      placeholder="e.g. Include 3D rotation, highlighted node traversal, neon glow, and high-contrast color scheme..."
+                    />
+                  </div>
+                </>
+              )}
+
               {/* TTS Audio Parameters */}
               {selectedNode.node_type_id === 'nt-tts' && (
                 <>
@@ -986,15 +1044,42 @@ export default function WorkflowArchitectPage() {
                       parsed = selectedNode.config;
                     }
 
-                    // Also pull form specific inputs
+                    // Extract all node specific inputs directly from UI
                     const modelEl = document.getElementById('cfg-model') as HTMLSelectElement;
                     if (modelEl) parsed.model = modelEl.value;
+
+                    const promptEl = document.getElementById('cfg-prompt') as HTMLTextAreaElement;
+                    if (promptEl) parsed.system_prompt = promptEl.value;
+
+                    const tempEl = document.getElementById('cfg-temp') as HTMLInputElement;
+                    if (tempEl) parsed.temperature = parseFloat(tempEl.value);
+
+                    const manimModeEl = document.getElementById('cfg-manim-mode') as HTMLSelectElement;
+                    if (manimModeEl) parsed.code_generation_mode = manimModeEl.value;
+
+                    const manimModelEl = document.getElementById('cfg-manim-model') as HTMLSelectElement;
+                    if (manimModelEl) parsed.model = manimModelEl.value;
+
+                    const manimResEl = document.getElementById('cfg-manim-res') as HTMLSelectElement;
+                    if (manimResEl) parsed.resolution = manimResEl.value;
+
+                    const manimPromptEl = document.getElementById('cfg-manim-prompt') as HTMLTextAreaElement;
+                    if (manimPromptEl) parsed.custom_prompt = manimPromptEl.value;
 
                     const voiceEl = document.getElementById('cfg-voice') as HTMLSelectElement;
                     if (voiceEl) parsed.voice = voiceEl.value;
 
+                    const rateEl = document.getElementById('cfg-rate') as HTMLInputElement;
+                    if (rateEl) parsed.rate = rateEl.value;
+
                     const aspectEl = document.getElementById('cfg-aspect') as HTMLSelectElement;
                     if (aspectEl) parsed.aspect = aspectEl.value;
+
+                    const roleEl = document.getElementById('cfg-role') as HTMLSelectElement;
+                    if (roleEl) parsed.reviewer_role = roleEl.value;
+
+                    const timeoutEl = document.getElementById('cfg-timeout') as HTMLInputElement;
+                    if (timeoutEl) parsed.timeout_seconds = parseInt(timeoutEl.value);
 
                     handleUpdateNodeConfig(selectedNode.id, parsed, labelInput);
                   }}
@@ -1153,15 +1238,25 @@ export default function WorkflowArchitectPage() {
                           Video rendering & assembly completed successfully.
                         </p>
                       </div>
-                      <a 
-                        href={`/api/download?path=${encodeURIComponent(jobStatus.files.final_video)}`}
-                        className="btn btn-primary"
-                        download
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.25rem' }}
-                      >
-                        <Download size={16} />
-                        Download Final Video (.mp4)
-                      </a>
+                      <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                        <button 
+                          className="btn btn-primary"
+                          onClick={() => setWatchModalJobId(executingJobId)}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#7C3AED', borderColor: '#7C3AED', padding: '0.6rem 1.25rem', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          <Play size={16} fill="white" />
+                          Watch Video Now
+                        </button>
+                        <a 
+                          href={`/api/download?path=${encodeURIComponent(jobStatus.files.final_video)}`}
+                          className="btn btn-secondary"
+                          download
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.25rem', fontWeight: 600 }}
+                        >
+                          <Download size={16} />
+                          Download MP4
+                        </a>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1187,6 +1282,111 @@ export default function WorkflowArchitectPage() {
                   <span>Start Execution</span>
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* THEATER VIDEO MODAL FOR ADMIN PIPELINE RUN                                */}
+      {/* ========================================================================= */}
+      {watchModalJobId && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1050
+        }}>
+          <div style={{
+            background: '#0F172A',
+            borderRadius: '16px',
+            maxWidth: '960px',
+            width: '95%',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            border: '1px solid #334155'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '1rem 1.5rem',
+              borderBottom: '1px solid #1E293B',
+              background: '#0F172A'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Play size={16} color="#FFFFFF" fill="#FFFFFF" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#FFFFFF' }}>Video Theater Preview</h3>
+                  <span style={{ fontSize: '0.75rem', color: '#94A3B8' }}>Job ID: {watchModalJobId}</span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setWatchModalJobId(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#94A3B8',
+                  cursor: 'pointer',
+                  padding: '0.4rem',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ background: '#020617', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '380px', maxHeight: '65vh' }}>
+              <video 
+                src={`/api/jobs/${watchModalJobId}/video`}
+                controls 
+                autoPlay 
+                style={{ width: '100%', maxHeight: '65vh', objectFit: 'contain' }}
+              />
+            </div>
+
+            <div style={{
+              padding: '1rem 1.5rem',
+              background: '#0F172A',
+              borderTop: '1px solid #1E293B',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.75rem'
+            }}>
+              <span style={{ fontSize: '0.85rem', color: '#94A3B8' }}>
+                Rendered with Master AutoCourse Multi-Engine Pipeline
+              </span>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <a 
+                  href={`/api/jobs/${watchModalJobId}/video`}
+                  download={`autocourse_${watchModalJobId}.mp4`}
+                  className="btn btn-primary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#7C3AED', borderColor: '#7C3AED', padding: '0.55rem 1.25rem' }}
+                >
+                  <Download size={15} />
+                  Export MP4
+                </a>
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => setWatchModalJobId(null)}
+                  style={{ padding: '0.55rem 1.25rem', color: '#E2E8F0', borderColor: '#334155' }}
+                >
+                  Close Theater
+                </button>
+              </div>
             </div>
           </div>
         </div>

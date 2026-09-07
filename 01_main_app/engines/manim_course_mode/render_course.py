@@ -21,6 +21,33 @@ class UltimateCourseScene(Scene):
                     pass
             self.wait(1.1); return
         fade_title(self,sc.get('title','Scene'))
+
+        # ── CUSTOM DYNAMIC PYTHON MANIM CODE (GPT-4o-mini / AI Generated) ──
+        custom_code = sc.get('custom_manim_code') or vd.get('manim_code') or sc.get('manim_code')
+        if (custom_code and str(custom_code).strip()) or dt in ['custom_code', 'custom', 'dynamic_code', 'dynamic']:
+            raw_code = str(custom_code or vd.get('code') or '').strip()
+            if raw_code.startswith('```python'): raw_code = raw_code[9:]
+            elif raw_code.startswith('```'): raw_code = raw_code[3:]
+            if raw_code.endswith('```'): raw_code = raw_code[:-3]
+            raw_code = raw_code.strip()
+            if raw_code:
+                try:
+                    scope = {
+                        'self': self, 'scene': self, 'vd': vd, 'sc': sc, 'data': data,
+                        'txt': txt, 'BG': BG, 'VIOLET': VIOLET,
+                    }
+                    exec(raw_code, globals(), scope)
+                    if 'construct' in scope and callable(scope['construct']):
+                        scope['construct'](self)
+                    elif 'render_scene' in scope and callable(scope['render_scene']):
+                        scope['render_scene'](self)
+                    if sc.get('bullets'):
+                        self.play(FadeIn(bullet_group(sc.get('bullets',[])),shift=RIGHT),run_time=.5)
+                    self.wait(1)
+                    return
+                except Exception as e:
+                    print(f"[UltimateCourseScene] Dynamic custom Manim code notice: {e}. Smoothly using visual template.")
+
         if dt in ['flowchart','motion_flowchart','electric_grid']: flowchart(self,vd)
         elif dt=='process': process(self,vd)
         elif dt=='timeline': timeline(self,vd)
@@ -40,4 +67,5 @@ class UltimateCourseScene(Scene):
         elif dt in ['graph','adjacency','weighted_graph','directed_graph']: network(self,vd)
         else: process(self,{'steps':sc.get('bullets') or ['Idea','Example','Result']})
         self.play(FadeIn(bullet_group(sc.get('bullets',[])),shift=RIGHT),run_time=.5); self.wait(1)
+
 

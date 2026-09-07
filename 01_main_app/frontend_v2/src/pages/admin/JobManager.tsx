@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Play, Pause, Square, RefreshCcw, ListTodo, Trash2, AlertCircle, Users, Building2 } from 'lucide-react';
+import { Play, Pause, Square, RefreshCcw, ListTodo, Trash2, AlertCircle, Users, Building2, Download, X, Clock } from 'lucide-react';
 
 interface JobSummary {
   job_id: string;
@@ -28,10 +28,70 @@ export default function JobManager() {
   const [selectedTenant, setSelectedTenant] = useState<string>('all');
   const [actionId, setActionId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [watchJob, setWatchJob] = useState<JobSummary | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const formatDateTime = (dateStr?: string) => {
+    if (!dateStr) return 'Just now';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const getEstimatedTimeRemaining = (job: JobSummary) => {
+    const status = (job.status || '').toLowerCase();
+    const progress = job.progress_percentage || 0;
+
+    if (status === 'completed' || progress >= 100) {
+      return { text: 'Done (0s)', color: '#16A34A', bg: '#DCFCE7', border: '#BBF7D0', icon: '✅' };
+    }
+    if (status === 'failed' || status === 'cancelled') {
+      return { text: 'Terminated', color: '#DC2626', bg: '#FEE2E2', border: '#FECDD3', icon: '⏹️' };
+    }
+    if (status === 'awaiting_approval') {
+      return { text: 'Approval Wait', color: '#D97706', bg: '#FEF3C7', border: '#FDE68A', icon: '⏸️' };
+    }
+
+    // Adaptive countdown based on elapsed time vs progress percentage
+    let remainingSec = 0;
+    if (job.created_at) {
+      const createdMs = new Date(job.created_at).getTime();
+      if (!isNaN(createdMs)) {
+        const elapsedSec = Math.max(1, (Date.now() - createdMs) / 1000);
+        if (progress > 5 && progress < 100) {
+          const totalEst = elapsedSec / (progress / 100);
+          remainingSec = Math.max(2, Math.round(totalEst - elapsedSec));
+        } else {
+          remainingSec = Math.max(4, Math.round(((100 - progress) / 100) * 70));
+        }
+      } else {
+        remainingSec = Math.max(4, Math.round(((100 - progress) / 100) * 65));
+      }
+    } else {
+      remainingSec = Math.max(4, Math.round(((100 - progress) / 100) * 65));
+    }
+
+    if (remainingSec > 60) {
+      const mins = Math.floor(remainingSec / 60);
+      const secs = remainingSec % 60;
+      return { text: `~${mins}m ${secs}s left`, color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE', icon: '⏳' };
+    }
+    return { text: `~${remainingSec}s left`, color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE', icon: '⏳' };
   };
 
   const fetchUsers = () => {
@@ -43,8 +103,11 @@ export default function JobManager() {
       .catch(err => console.warn("Failed to fetch IAM users", err));
   };
 
-  const fetchJobs = () => {
-    setLoading(true);
+  // Fixed fetchJobs: only show full loading skeleton on initial page mount to prevent glitching/flickering
+  const fetchJobs = (isInitial = false) => {
+    if (isInitial && jobs.length === 0) {
+      setLoading(true);
+    }
     const params = new URLSearchParams();
     if (selectedUser !== 'all') params.append('user_id', selectedUser);
     if (selectedTenant !== 'all') params.append('tenant_id', selectedTenant);
@@ -56,10 +119,11 @@ export default function JobManager() {
         const arr = Object.values(data) as JobSummary[];
         arr.reverse();
         setJobs(arr);
-        setLoading(false);
       })
       .catch(err => {
         console.error("Failed to fetch jobs", err);
+      })
+      .finally(() => {
         setLoading(false);
       });
   };
@@ -69,8 +133,8 @@ export default function JobManager() {
   }, []);
 
   useEffect(() => {
-    fetchJobs();
-    const interval = setInterval(fetchJobs, 4000);
+    fetchJobs(true);
+    const interval = setInterval(() => fetchJobs(false), 4000);
     return () => clearInterval(interval);
   }, [selectedUser, selectedTenant]);
 
@@ -231,7 +295,7 @@ export default function JobManager() {
             <span>{selectedUser !== 'all' ? `Clear Tasks (${selectedUser})` : 'Clear All Tasks'}</span>
           </button>
 
-          <button className="btn btn-secondary" onClick={fetchJobs} style={{ padding: '0.55rem 1rem' }}>
+          <button className="btn btn-secondary" onClick={() => fetchJobs(true)} style={{ padding: '0.55rem 1rem' }}>
             <RefreshCcw size={16} />
             <span>Refresh</span>
           </button>
@@ -338,10 +402,10 @@ export default function JobManager() {
           <thead>
             <tr style={{ background: '#F1F5F9', borderBottom: '1px solid var(--border-color)' }}>
               <th style={{ padding: '0.85rem 1.25rem', fontSize: '0.78rem', color: '#334155', fontWeight: 700, textTransform: 'uppercase' }}>Job ID</th>
-              <th style={{ padding: '0.85rem 1.25rem', fontSize: '0.78rem', color: '#334155', fontWeight: 700, textTransform: 'uppercase' }}>Task Details</th>
+              <th style={{ padding: '0.85rem 1.25rem', fontSize: '0.78rem', color: '#334155', fontWeight: 700, textTransform: 'uppercase' }}>Task Details & Timing</th>
               <th style={{ padding: '0.85rem 1.25rem', fontSize: '0.78rem', color: '#334155', fontWeight: 700, textTransform: 'uppercase' }}>Tenant & User</th>
               <th style={{ padding: '0.85rem 1.25rem', fontSize: '0.78rem', color: '#334155', fontWeight: 700, textTransform: 'uppercase' }}>Status</th>
-              <th style={{ padding: '0.85rem 1.25rem', fontSize: '0.78rem', color: '#334155', fontWeight: 700, textTransform: 'uppercase' }}>Progress</th>
+              <th style={{ padding: '0.85rem 1.25rem', fontSize: '0.78rem', color: '#334155', fontWeight: 700, textTransform: 'uppercase' }}>Progress & Estimated Time</th>
               <th style={{ padding: '0.85rem 1.25rem', fontSize: '0.78rem', color: '#334155', fontWeight: 700, textTransform: 'uppercase' }}>Actions</th>
             </tr>
           </thead>
@@ -366,6 +430,7 @@ export default function JobManager() {
               const isTerminated = job.status === 'completed' || job.status === 'failed' || job.status === 'cancelled';
               const isPaused = job.status === 'awaiting_approval';
               const isBusy = actionId === job.job_id;
+              const est = getEstimatedTimeRemaining(job);
 
               return (
                 <tr key={job.job_id} style={{ borderBottom: '1px solid var(--border-light)' }}>
@@ -373,11 +438,15 @@ export default function JobManager() {
                     {job.job_id.substring(0, 8)}...
                   </td>
                   <td style={{ padding: '0.85rem 1.25rem' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-heading)' }}>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-heading)' }}>
                       {job.request?.topic || job.request?.youtube_url || "AutoCourse Task"}
                     </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.25rem', fontSize: '0.74rem', color: '#64748B' }}>
+                      <Clock size={12} color="#64748B" />
+                      <span>{formatDateTime(job.created_at)}</span>
+                    </div>
                     {job.message && (
-                      <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.15rem' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: '0.2rem' }}>
                         {job.message}
                       </div>
                     )}
@@ -396,15 +465,56 @@ export default function JobManager() {
                     {getStatusBadge(job.status)}
                   </td>
                   <td style={{ padding: '0.85rem 1.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: '130px' }}>
-                      <div style={{ flex: 1, height: '7px', background: '#E2E8F0', borderRadius: '4px', overflow: 'hidden' }}>
-                        <div style={{ width: `${job.progress_percentage || 0}%`, height: '100%', background: 'linear-gradient(90deg, #DC2626, #EF4444)' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: '160px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.825rem', fontWeight: 700, color: '#DC2626' }}>{job.progress_percentage || 0}%</span>
+                        <span style={{
+                          fontSize: '0.725rem',
+                          fontWeight: 600,
+                          color: est.color,
+                          background: est.bg,
+                          border: `1px solid ${est.border}`,
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '999px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem'
+                        }}>
+                          <span>{est.icon}</span>
+                          <span>{est.text}</span>
+                        </span>
                       </div>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#DC2626' }}>{job.progress_percentage || 0}%</span>
+                      <div style={{ width: '100%', height: '7px', background: '#E2E8F0', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ width: `${job.progress_percentage || 0}%`, height: '100%', background: 'linear-gradient(90deg, #DC2626, #EF4444)', transition: 'width 0.4s ease' }} />
+                      </div>
                     </div>
                   </td>
                   <td style={{ padding: '0.85rem 1.25rem' }}>
-                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                      {/* Watch Video Button for completed jobs */}
+                      {job.status === 'completed' && (
+                        <>
+                          <button 
+                            className="btn btn-primary"
+                            style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', background: '#7C3AED', borderColor: '#7C3AED', color: '#FFFFFF', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 600, cursor: 'pointer' }}
+                            onClick={() => setWatchJob(job)}
+                            title="Watch Video in Theater Modal"
+                          >
+                            <Play size={12} fill="white" />
+                            <span>Watch</span>
+                          </button>
+                          <a 
+                            href={`/api/jobs/${job.job_id}/video`}
+                            download={`video_${job.job_id}.mp4`}
+                            className="btn btn-secondary"
+                            style={{ padding: '0.35rem 0.55rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center' }}
+                            title="Export MP4 Video File"
+                          >
+                            <Download size={13} />
+                          </a>
+                        </>
+                      )}
+
                       {/* Play / Pause Toggle Button */}
                       {!isTerminated && (
                         <button 
@@ -565,6 +675,113 @@ export default function JobManager() {
               >
                 Delete Task
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Theater Video Player Modal for Admin */}
+      {watchJob && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1050
+        }}>
+          <div style={{
+            background: '#0F172A',
+            borderRadius: '16px',
+            maxWidth: '960px',
+            width: '95%',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            border: '1px solid #334155'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '1rem 1.5rem',
+              borderBottom: '1px solid #1E293B',
+              background: '#0F172A'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Play size={16} color="#FFFFFF" fill="#FFFFFF" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#FFFFFF' }}>
+                    {watchJob.request?.topic || watchJob.request?.youtube_url || 'Generated Video'}
+                  </h3>
+                  <span style={{ fontSize: '0.75rem', color: '#94A3B8' }}>
+                    Job ID: {watchJob.job_id} &bull; Started {formatDateTime(watchJob.created_at)}
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setWatchJob(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#94A3B8',
+                  cursor: 'pointer',
+                  padding: '0.4rem',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ background: '#020617', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '380px', maxHeight: '65vh' }}>
+              <video 
+                src={`/api/jobs/${watchJob.job_id}/video`}
+                controls 
+                autoPlay 
+                style={{ width: '100%', maxHeight: '65vh', objectFit: 'contain' }}
+              />
+            </div>
+
+            <div style={{
+              padding: '1rem 1.5rem',
+              background: '#0F172A',
+              borderTop: '1px solid #1E293B',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.75rem'
+            }}>
+              <span style={{ fontSize: '0.85rem', color: '#94A3B8' }}>
+                👤 {watchJob.user_id || 'shamith'} &bull; 🏢 {watchJob.tenant_id || 'default'}
+              </span>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <a 
+                  href={`/api/jobs/${watchJob.job_id}/video`}
+                  download={`autocourse_${watchJob.job_id}.mp4`}
+                  className="btn btn-primary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#7C3AED', borderColor: '#7C3AED', padding: '0.55rem 1.25rem' }}
+                >
+                  <Download size={15} />
+                  Export MP4
+                </a>
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => setWatchJob(null)}
+                  style={{ padding: '0.55rem 1.25rem', color: '#E2E8F0', borderColor: '#334155' }}
+                >
+                  Close Theater
+                </button>
+              </div>
             </div>
           </div>
         </div>
